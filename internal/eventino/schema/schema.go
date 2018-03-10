@@ -20,19 +20,11 @@ func EnsureSchema(txn *badger.Txn) (err error) {
 }
 
 // GetSchema returns the schema at the given version
-func GetSchema(txn *badger.Txn, vsn uint64, dec SchemaDecoder) (out []EntityType, err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
+func GetSchema(txn *badger.Txn, vsn uint64, dec SchemaDecoder) (Schema, error) {
+	if err := EnsureSchema(txn); err != nil {
+		return Schema{}, err
 	}
-	var scm schema
-	if scm, err = getSchema(txn, dec, func(s schema) bool { return s.vsn > vsn }); err != nil {
-		return
-	}
-	out = make([]EntityType, 0, len(scm.entities))
-	for _, ent := range scm.entities {
-		out = append(out, ent)
-	}
-	return out, nil
+	return getSchema(txn, dec, func(s Schema) bool { return s.VSN > vsn })
 }
 
 // SchemaVSN returns the latest version of the schema
@@ -40,11 +32,11 @@ func SchemaVSN(txn *badger.Txn, dec SchemaDecoder) (vsn uint64, err error) {
 	if err = EnsureSchema(txn); err != nil {
 		return
 	}
-	var scm schema
-	if scm, err = getSchema(txn, dec, func(_ schema) bool { return false }); err != nil {
+	var scm Schema
+	if scm, err = getSchema(txn, dec, func(_ Schema) bool { return false }); err != nil {
 		return
 	}
-	vsn = scm.vsn
+	vsn = scm.VSN
 	return
 }
 
@@ -79,9 +71,9 @@ func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) 
 	if err = EnsureSchema(txn); err != nil {
 		return
 	}
-	var scm schema
-	stopper := func(s schema) bool {
-		if entS, ok := s.entities[name]; ok {
+	var scm Schema
+	stopper := func(s Schema) bool {
+		if entS, ok := s.Entities[name]; ok {
 			return entS.VSN > vsn
 		}
 		return false
@@ -90,7 +82,7 @@ func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) 
 		return
 	}
 	var ok bool
-	if out, ok = scm.entities[name]; !ok {
+	if out, ok = scm.Entities[name]; !ok {
 		return out, errors.New("entity type not found")
 	}
 	return
@@ -166,10 +158,10 @@ func GetEventType(txn *badger.Txn, dec SchemaDecoder, entName, evtName string, v
 	if err = EnsureSchema(txn); err != nil {
 		return
 	}
-	var scm schema
+	var scm Schema
 	evtKey := EventSchemaID{Name: evtName, VSN: vsn}
-	stopper := func(s schema) bool {
-		if entS, ok := s.entities[entName]; ok {
+	stopper := func(s Schema) bool {
+		if entS, ok := s.Entities[entName]; ok {
 			if _, ok := entS.Events[evtKey]; ok {
 				return true
 			}
@@ -181,7 +173,7 @@ func GetEventType(txn *badger.Txn, dec SchemaDecoder, entName, evtName string, v
 	}
 	var ok bool
 	var entity EntityType
-	if entity, ok = scm.entities[entName]; ok {
+	if entity, ok = scm.Entities[entName]; ok {
 		if out, ok = entity.Events[evtKey]; ok {
 			return
 		}

@@ -10,16 +10,21 @@ func Factory() schema.SchemaFactory {
 
 type gobSchemaFactory struct{}
 
-func (_ gobSchemaFactory) For(t schema.DataType) schema.DataSchema {
+// TODO: should probably return DataSchema, error and errors is data type is not simple
+func (_ gobSchemaFactory) SimpleType(t schema.DataType) schema.DataSchema {
 	switch t {
+	case schema.Null:
+		return nilSchema
 	case schema.Bool:
 		return boolSchema
 	case schema.String:
 		return stringSchema
-	case schema.Record:
-		return &gobRecordSchema{Fields: map[string]schema.DataSchema{}}
 	}
 	return nil
+}
+
+func (_ gobSchemaFactory) NewRecord() schema.RecordSchemaBuilder {
+	return &gobRecordSchema{Fields: map[string]schema.DataSchema{}}
 }
 
 func (_ gobSchemaFactory) Decoder() schema.SchemaDecoder {

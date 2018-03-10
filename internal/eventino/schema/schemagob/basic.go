@@ -1,6 +1,8 @@
 package schemagob
 
-import "github.com/cheng81/eventino/internal/eventino/schema"
+import (
+	"github.com/cheng81/eventino/internal/eventino/schema"
+)
 
 type basicSchema struct {
 	t schema.DataType
@@ -17,6 +19,10 @@ func (b *basicSchema) Encoder() schema.DataEncoder {
 }
 func (b *basicSchema) Decoder() schema.DataDecoder {
 	switch b.t {
+	case schema.Null:
+		return GenericGobDecoder(func(b []byte) (interface{}, error) {
+			return nil, nil
+		})
 	case schema.Bool:
 		return GenericGobDecoder(func(b []byte) (interface{}, error) {
 			var v bool
@@ -44,6 +50,8 @@ func (b *basicSchema) Decoder() schema.DataDecoder {
 }
 func (b *basicSchema) Valid(v interface{}) (out bool) {
 	switch b.t {
+	case schema.Null:
+		out = v == nil
 	case schema.Bool:
 		_, out = v.(bool)
 	case schema.String:
@@ -52,10 +60,12 @@ func (b *basicSchema) Valid(v interface{}) (out bool) {
 	return
 }
 
+var nilSchema *basicSchema
 var boolSchema *basicSchema
 var stringSchema *basicSchema
 
 func init() {
+	nilSchema = &basicSchema{t: schema.Null}
 	boolSchema = &basicSchema{t: schema.Bool}
 	stringSchema = &basicSchema{t: schema.String}
 }

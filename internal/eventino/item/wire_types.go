@@ -16,6 +16,3 @@ type viewWire struct {
 	Vsn  uint64
 	View []byte
 }
-
-// holds next Item VSN
-// type vsnWire uint64

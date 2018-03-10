@@ -28,6 +28,12 @@ type Item struct {
 	Events    []Event
 }
 
+// IDEvent is an event in a Range* query
+type IDEvent struct {
+	ID    ItemID
+	Event Event
+}
+
 // ViewFoldFunc func type fold events into an accumulator
 // and return the final result. The output boolean can be
 // used to return earlier

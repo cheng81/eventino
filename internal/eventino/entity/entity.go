@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"fmt"
+
 	"github.com/cheng81/eventino/internal/eventino/item"
 	"github.com/cheng81/eventino/internal/eventino/schema"
 	"github.com/dgraph-io/badger"
@@ -14,11 +16,11 @@ func NewEntity(txn *badger.Txn, entType schema.EntityType, ID []byte) (err error
 }
 
 // Put adds the given event to the entity
-func Put(txn *badger.Txn, entType schema.EntityType, ID []byte, evtName string, evt interface{}) (vsn uint64, err error) {
+func Put(txn *badger.Txn, entType schema.EntityType, ID []byte, evtID schema.EventSchemaID, evt interface{}) (vsn uint64, err error) {
 	var itemEvt item.Event
 	entID := entityID(entType, ID)
 
-	if itemEvt, err = entityEvt(entType, evtName, evt); err != nil {
+	if itemEvt, err = entityEvt(entType, evtID, evt); err != nil {
 		return
 	}
 	if vsn, err = item.Put(txn, entID, itemEvt); err != nil {
@@ -57,11 +59,18 @@ func View(txn *badger.Txn,
 	fold ViewFoldFunc,
 	initial interface{}) (interface{}, uint64, error) {
 	itemFold := func(acc interface{}, evt item.Event, vsn uint64) (interface{}, bool, error) {
-		entEvt, err := mapEvent(entType, evt)
-		if err != nil {
-			return nil, true, err
+		fmt.Println("entity.View", acc, evt)
+		if evt.Kind == EventKindEntity {
+			entEvt, err := mapEvent(entType, evt)
+			if err != nil {
+				fmt.Println("entity.View cannot mapEvent", err)
+				return nil, true, err
+			}
+			return fold(acc, entEvt, vsn)
 		}
-		return fold(acc, entEvt, vsn)
+		// TODO: perhaps handle system events too
+		return acc, false, nil
 	}
+	fmt.Println("about to call item.View")
 	return item.View(txn, entityID(entType, ID), fromVsn, itemFold, initial)
 }

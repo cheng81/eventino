@@ -1,8 +1,17 @@
 package schema
 
+type Schema struct {
+	VSN      uint64
+	Entities map[string]EntityType
+}
+
 type EventSchemaID struct {
 	Name string
 	VSN  uint64
+}
+
+func NewEventSchemaID(name string, vsn uint64) EventSchemaID {
+	return EventSchemaID{name, vsn}
 }
 
 type EntityType struct {
@@ -22,6 +31,23 @@ func (et EntityType) Latest(evtName string) (DataSchema, uint64, bool) {
 	return scm, latestVSN, exists
 }
 
+type SchemaFactory interface {
+	SimpleType(DataType) DataSchema
+	NewRecord() RecordSchemaBuilder
+	Decoder() SchemaDecoder
+	// TODO suport other complex types
+	// NewEnum(items ...string) DataSchema
+	// NewOptional(DataSchema) DataSchema
+	// NewArray(DataSchema) DataSchema
+	// NewUnion(types ...DataSchema) DataSchema
+}
+
+type RecordSchemaBuilder interface {
+	SetName(string) RecordSchemaBuilder
+	SetField(string, DataSchema) RecordSchemaBuilder
+	ToDataSchema() DataSchema
+}
+
 type DataDecoder interface {
 	Decode([]byte) (interface{}, error)
 }
@@ -33,7 +59,6 @@ type DataEncoder interface {
 type DataSchema interface {
 	SchemaDecoder() SchemaDecoder
 	EncodeSchema() ([]byte, error)
-	// DecodeSchema([]byte) error
 
 	Encoder() DataEncoder
 	Decoder() DataDecoder
@@ -45,77 +70,100 @@ type SchemaDecoder interface {
 	Decode([]byte) (DataSchema, error)
 }
 
-type SchemaFactory interface {
-	For(DataType) DataSchema
-	Decoder() SchemaDecoder
-}
-
 type DataType byte
 
+// TODO: I feel like we only need this
+// enum for basic types.
+// Complex type should be returned
+// with a builder from the Factory
 const (
-	Bool DataType = iota
+	Null DataType = iota
+	Bool
 	Int64
 	Float64
 	String
 	Bytes
+	Enum
 	Optional
 	Array
 	Union
 	Record
 )
 
-type RecordSchemaBuilder interface {
-	SetName(string) RecordSchemaBuilder
-	SetField(string, DataSchema) RecordSchemaBuilder
+func (dt DataType) IsSimple() bool {
+	switch dt {
+	case Null:
+		fallthrough
+	case Bool:
+		fallthrough
+	case Int64:
+		fallthrough
+	case Float64:
+		fallthrough
+	case String:
+		fallthrough
+	case Bytes:
+		return true
+	}
+	return false
+}
+
+func (dt DataType) IsEnum() bool {
+	return dt == Enum
+}
+
+func (dt DataType) IsComplex() bool {
+	switch dt {
+	case Optional:
+		fallthrough
+	case Array:
+		fallthrough
+	case Union:
+		fallthrough
+	case Record:
+		return true
+	}
+	return false
 }
 
 const (
 	EventKindSchema byte = 4
 )
 
-// type BoolSchema struct{}
+// TODO: make complex types namespace
+// so that a record is defined there,
+// and an entity event data schema
+// refers to a, e.g., record using its name?
 
-// func (b BoolSchema) Valid(v interface{}) error {
-// 	switch v := v.(type) {
-// 	case bool:
-// 		return nil
-// 	default:
-// 		return NewInvalidType("bool", reflect.TypeOf(v).Name())
-// 	}
-// }
-
-// type IntSchema struct{}
-
-// func (i IntSchema) Valid(v interface{}) error {
-// 	switch v := v.(type) {
-// 	case int64:
-// 		return nil
-// 	default:
-// 		return NewInvalidType("int64", reflect.TypeOf(v).Name())
-// 	}
-// }
-
-// type FloatSchema struct{}
-
-// func (f FloatSchema) Valid(v interface{}) error {
-// 	switch v := v.(type) {
-// 	case float64:
-// 		return nil
-// 	default:
-// 		return NewInvalidType("float64", reflect.TypeOf(v).Name())
-// 	}
-// }
-
-// type VecSchema struct {
-// 	ItemSchema EventSchema
-// }
-
-// func (s VecSchema) Valid(v interface{}) error {
-// 	t := reflect.TypeOf(v)
-// 	switch v := v.(type) {
-// 	case []interface{}:
-// 		return s.ItemSchema.Valid(v[0])
-// 	default:
-// 		return NewInvalidType("array", reflect.TypeOf(v).Name())
-// 	}
-// }
+// TODO: views requires their schema too,
+// though this is complex since it'll need
+// to support an entire language!
+// a view materializes an entity to a record type,
+// or actually to any type? anyway, then the
+// view specs take an entity, a type,
+// and a function that takes an event and an instance
+// of the view record and updates the record with the
+// info of the event
+// e.g.
+// type UserViewRec Record with
+//		ID string
+//		username string
+//		email string
+//		isPaying bool
+//		lastUpdate timestamp
+// view UserView on User returns UserViewRec as
+//	-- specify fold function!
+//	(e:Created, rec) {
+//		rec.ID = e.UserID,
+//		rec.isPaying = e.Paying
+//		rec.lastUpdate = timestamp(e)
+//	}
+//  (e:Updated, rec) {
+//		rec.email = e.Email
+//		rec.username = e.Username
+//		rec.lastUpdate = timestamp(e)
+//  }
+//
+// Also: a view should be tied to a specific schema version,
+// so that, e.g., events added/updated afterwards should be
+// not passed to the fold fun

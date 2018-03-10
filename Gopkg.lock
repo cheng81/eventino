@@ -26,10 +26,28 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  revision = "553a641470496b2327abcac10b36396bd98e45c9"
+
+[[projects]]
+  name = "github.com/linkedin/goavro"
+  packages = ["."]
+  revision = "94a7a9db615f35a39dd2b82089398b92fabad2ba"
+  version = "v2.1.0"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/robertkrimen/otto"
+  packages = [".","ast","dbg","file","parser","registry","token"]
+  revision = "6c383dd335ef8dcccef05e651ce1eccfe4d0f011"
 
 [[projects]]
   branch = "master"
@@ -43,9 +61,15 @@
   packages = ["unix"]
   revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
+[[projects]]
+  name = "gopkg.in/sourcemap.v1"
+  packages = [".","base64vlq"]
+  revision = "6e83acea0053641eff084973fee085f0c193c61a"
+  version = "v1.0.5"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ae44791b3f84902e4a00b715aee94cf812cb4ff67a499b8ea806378521418646"
+  inputs-digest = "f49b3789a76e58a259d9cb5b7bd4cb52a871fe4028608f3f8fd83a7c9657a9ae"
   solver-name = "gps-cdcl"
   solver-version = 1

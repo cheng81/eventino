@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/cheng81/eventino/internal/eventino/schema"
-	"github.com/cheng81/eventino/internal/eventino/schema/schemagob"
+	"github.com/cheng81/eventino/internal/eventino/schema/schemaavro"
 
 	"github.com/dgraph-io/badger"
 )
@@ -27,7 +27,7 @@ func DirSize(path string) (int64, error) {
 
 func withTempDB(fn func(*badger.DB) error) error {
 	dbDir := fmt.Sprintf("/tmp/badger-%d", time.Now().UnixNano())
-	log.Println("start")
+	log.Println("start", dbDir)
 	opts := badger.DefaultOptions
 	opts.Dir = dbDir
 	opts.ValueDir = dbDir
@@ -57,7 +57,7 @@ func TestCreate(t *testing.T) {
 		}
 		err = db.Update(func(txn *badger.Txn) (err error) {
 			var entTyp schema.EntityType
-			if entTyp, err = schema.GetEntityType(txn, schemagob.Factory().Decoder(), "User", 100); err != nil {
+			if entTyp, err = schema.GetEntityType(txn, schemaavro.Factory().Decoder(), "User", 100); err != nil {
 				return
 			}
 			if err = NewEntity(txn, entTyp, entID); err != nil {
@@ -67,7 +67,8 @@ func TestCreate(t *testing.T) {
 				"Name":   "daCheng",
 				"Paying": true,
 			}
-			if _, err = Put(txn, entTyp, entID, "Created", createdRec); err != nil {
+
+			if _, err = Put(txn, entTyp, entID, schema.NewEventSchemaID("Created", 0), createdRec); err != nil {
 				return
 			}
 			return
@@ -79,7 +80,7 @@ func TestCreate(t *testing.T) {
 		err = db.View(func(txn *badger.Txn) (err error) {
 			viewT := time.Now()
 			var entTyp schema.EntityType
-			if entTyp, err = schema.GetEntityType(txn, schemagob.Factory().Decoder(), "User", 100); err != nil {
+			if entTyp, err = schema.GetEntityType(txn, schemaavro.Factory().Decoder(), "User", 100); err != nil {
 				return
 			}
 			var ent Entity
@@ -120,21 +121,134 @@ func TestCreate(t *testing.T) {
 	})
 }
 
+func TestCreateUpdate(t *testing.T) {
+	withTempDB(func(db *badger.DB) (err error) {
+		entID := []byte("chengg")
+		if err = mkSchema(db); err != nil {
+			t.Fatal("cannot create schema", err)
+		}
+		err = db.Update(func(txn *badger.Txn) (err error) {
+			var entTyp schema.EntityType
+			if entTyp, err = schema.GetEntityType(txn, schemaavro.Factory().Decoder(), "User", 100); err != nil {
+				return
+			}
+			if err = NewEntity(txn, entTyp, entID); err != nil {
+				return
+			}
+			createdRec := map[string]interface{}{
+				"Name":   "daCheng",
+				"Paying": true,
+			}
+			if _, err = Put(txn, entTyp, entID, schema.NewEventSchemaID("Created", 0), createdRec); err != nil {
+				return
+			}
+			updatedRec := map[string]interface{}{
+				"Email":    "daCheng@daCheng.com",
+				"Username": "daCheng",
+				"Useful":   nil,
+			}
+			if _, err = Put(txn, entTyp, entID, schema.NewEventSchemaID("Updated", 0), updatedRec); err != nil {
+				return
+			}
+			updatedRec = map[string]interface{}{
+				"Email":    "info@daCheng.com",
+				"Username": "daddaCheng",
+				"Useful":   nil,
+			}
+			if _, err = Put(txn, entTyp, entID, schema.NewEventSchemaID("Updated", 0), updatedRec); err != nil {
+				return
+			}
+			return
+		})
+		if err != nil {
+			t.Fatal("cannot write", err)
+		}
+
+		err = db.View(func(txn *badger.Txn) (err error) {
+			var entTyp schema.EntityType
+			if entTyp, err = schema.GetEntityType(txn, schemaavro.Factory().Decoder(), "User", 100); err != nil {
+				return
+			}
+			var ent Entity
+			if ent, err = Get(txn, entTyp, entID, 100); err != nil {
+				return
+			}
+			t.Log("Entity.Type", ent.Type)
+			t.Log("Entity.ID", string(ent.ID))
+			if string(ent.ID) != string(entID) {
+				t.Fatal("entity ID mismatch", string(ent.ID), string(entID))
+			}
+			ensure := func(rec map[string]interface{}, key string, expected interface{}) {
+				if rec[key] != expected {
+					t.Fatalf("Expected %s to be %v, but got %v - %v", key, expected, rec[key], rec)
+				}
+			}
+			evt := ent.Events[0]
+			if evt.Type.Name != "Created" {
+				t.Fatal("1st event should be Created")
+			}
+			rec, ok := evt.Payload.(map[string]interface{})
+			if !ok {
+				t.Fatal("1st event payload should be record")
+			}
+			ensure(rec, "Name", "daCheng")
+			ensure(rec, "Paying", true)
+
+			evt = ent.Events[1]
+			rec, ok = evt.Payload.(map[string]interface{})
+			if !ok {
+				t.Fatal("2nd event payload should be record")
+			}
+			if evt.Type.Name != "Updated" {
+				t.Fatal("2nd event should be Updated", evt.Type.Name)
+			}
+			ensure(rec, "Email", "daCheng@daCheng.com")
+			ensure(rec, "Username", "daCheng")
+
+			evt = ent.Events[2]
+			rec, ok = evt.Payload.(map[string]interface{})
+			if !ok {
+				t.Fatal("3rd event payload should be record")
+			}
+			if evt.Type.Name != "Updated" {
+				t.Fatal("3rd event should be Updated", evt.Type.Name)
+			}
+			ensure(rec, "Email", "info@daCheng.com")
+			ensure(rec, "Username", "daddaCheng")
+
+			return
+		})
+		if err != nil {
+			t.Fatal("cannot read", err)
+		}
+		return
+	})
+}
+
 func mkSchema(db *badger.DB) error {
 	return db.Update(func(txn *badger.Txn) (err error) {
 		if err = schema.CreateEntityType(txn, "User"); err != nil {
 			return
 		}
-		factory := schemagob.Factory()
-		createdSchema := factory.For(schema.Record)
-		boolSchema := factory.For(schema.Bool)
-		stringSchema := factory.For(schema.String)
+		factory := schemaavro.Factory()
+		boolSchema := factory.SimpleType(schema.Bool)
+		stringSchema := factory.SimpleType(schema.String)
+		nullSchema := factory.SimpleType(schema.Null)
 
-		bldr := createdSchema.(schema.RecordSchemaBuilder)
-		bldr.SetName("CreatedRecord").
+		createdBldr := factory.NewRecord().
+			SetName("UserCreatedRecord").
 			SetField("Name", stringSchema).
 			SetField("Paying", boolSchema)
-		if err = schema.CreateEntityEventType(txn, "User", "Created", createdSchema); err != nil {
+		if err = schema.CreateEntityEventType(txn, "User", "Created", createdBldr.ToDataSchema()); err != nil {
+			return
+		}
+
+		updatedBldr := factory.NewRecord().
+			SetName("UserUpdatedRecord").
+			SetField("Email", stringSchema).
+			SetField("Username", stringSchema).
+			SetField("Useful", nullSchema)
+		if err = schema.CreateEntityEventType(txn, "User", "Updated", updatedBldr.ToDataSchema()); err != nil {
 			return
 		}
 

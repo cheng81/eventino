@@ -1,6 +1,7 @@
 package item
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/cheng81/eventino/internal/eventino/log"
@@ -283,6 +284,7 @@ func View(txn *badger.Txn, ID ItemID, fromVsn uint64, fold ViewFoldFunc, initial
 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
 	defer iter.Close()
 
+	fmt.Println("item.View start")
 	for iter.Seek(init); iter.ValidForPrefix(pfx); iter.Next() {
 		item := iter.Item()
 		if vsn, err = ID.VSNFromEventKey(item.Key()); err != nil {
@@ -302,7 +304,9 @@ func View(txn *badger.Txn, ID ItemID, fromVsn uint64, fold ViewFoldFunc, initial
 		if event, err = unwrapLogEvent(logEvt); err != nil {
 			return
 		}
+		fmt.Println("item.View call fold")
 		if out, stop, err = fold(out, event, vsn); err != nil {
+			fmt.Println("outch!", err)
 			return
 		}
 		if stop {
@@ -311,6 +315,39 @@ func View(txn *badger.Txn, ID ItemID, fromVsn uint64, fold ViewFoldFunc, initial
 	}
 
 	return
+}
+
+// RangePrefix loads from the log a chunk of item events, matching a given item prefix
+func RangePrefix(txn *badger.Txn, itemPfx ItemID, from, to log.EventID, max int) ([]IDEvent, *log.EventID, error) {
+	matcher := log.EventMatcher(func(lEvtId log.EventID, lEvt log.Event) bool {
+		evt, err := unwrapLogEventWire(lEvt)
+		if err != nil {
+			return false
+		}
+		id := evt.ID
+		return id.Type == itemPfx.Type && bytes.HasPrefix(id.ID, itemPfx.ID)
+	})
+	events, lastEvtID, err := log.RangeMatch(txn, from, to, max, matcher)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]IDEvent, len(events))
+	for idx, lEvt := range events {
+		evt, err := unwrapLogEventWire(lEvt)
+		if err != nil {
+			return nil, nil, err
+		}
+		out[idx] = IDEvent{
+			ID: evt.ID,
+			Event: Event{
+				LogID:   lEvt.ID,
+				Kind:    lEvt.Meta,
+				Type:    evt.EventType,
+				Payload: evt.Payload,
+			},
+		}
+	}
+	return out, lastEvtID, nil
 }
 
 // Replicate applies the changes specified in the log.EventReplica
@@ -323,6 +360,7 @@ func Replicate(txn *badger.Txn, evt log.EventReplica) error {
 	}
 	ID := eventWire.ID
 	event := Event{
+		LogID:   evt.ID,
 		Kind:    evt.Event.Meta,
 		Type:    eventWire.EventType,
 		Payload: eventWire.Payload,

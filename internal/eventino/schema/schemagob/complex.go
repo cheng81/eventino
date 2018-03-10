@@ -17,6 +17,9 @@ func (r *gobRecordSchema) SetField(name string, typ schema.DataSchema) schema.Re
 	r.Fields[name] = typ
 	return r
 }
+func (r *gobRecordSchema) ToDataSchema() schema.DataSchema {
+	return r
+}
 
 func (_ *gobRecordSchema) SchemaDecoder() schema.SchemaDecoder {
 	return gobSchemaDecoder{}
@@ -56,7 +59,6 @@ func (r *gobRecordSchema) Decoder() schema.DataDecoder {
 		err := decode(b, &v)
 		return v, err
 	})
-	// return genericDecoder(func() interface{} { return map[string]interface{}{} })
 }
 
 func (r *gobRecordSchema) Valid(obj interface{}) bool {

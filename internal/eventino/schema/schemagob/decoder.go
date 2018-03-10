@@ -15,6 +15,8 @@ func (d gobSchemaDecoder) Decode(b []byte) (dec schema.DataSchema, err error) {
 	}
 	t = schema.DataType(b[0])
 	switch t {
+	case schema.Null:
+		dec = nilSchema
 	case schema.Bool:
 		dec = boolSchema
 	case schema.String:

@@ -20,16 +20,15 @@ func entityID(typ schema.EntityType, ID []byte) item.ItemID {
 	return item.NewItemID(1, b)
 }
 
-func entityEvt(typ schema.EntityType, evt string, payload interface{}) (out item.Event, err error) {
+func entityEvt(typ schema.EntityType, evtID schema.EventSchemaID, payload interface{}) (out item.Event, err error) {
 	var evtType []byte
 	var evtPayload []byte
 	var scm schema.DataSchema
-	var scmVsn uint64
 	var ok bool
 
 	out = item.Event{Kind: EventKindEntity}
 
-	if scm, scmVsn, ok = typ.Latest(evt); !ok {
+	if scm, ok = typ.Events[evtID]; !ok {
 		err = errors.New("Event not found in Entity schema")
 		return
 	}
@@ -38,7 +37,7 @@ func entityEvt(typ schema.EntityType, evt string, payload interface{}) (out item
 		return
 	}
 
-	if evtType, err = eventTypeFromSchema(typ, evt, scmVsn); err != nil {
+	if evtType, err = eventTypeFromSchema(typ, evtID); err != nil {
 		return
 	}
 	if evtPayload, err = scm.Encoder().Encode(payload); err != nil {
@@ -57,8 +56,8 @@ type evttypeWire struct {
 	VSN    uint64
 }
 
-func eventTypeFromSchema(typ schema.EntityType, evt string, evtVsn uint64) ([]byte, error) {
-	v := evttypeWire{typ.Name, evt, evtVsn}
+func eventTypeFromSchema(typ schema.EntityType, evtID schema.EventSchemaID) ([]byte, error) {
+	v := evttypeWire{typ.Name, evtID.Name, evtID.VSN}
 	return encode(v)
 }
 

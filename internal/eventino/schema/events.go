@@ -93,26 +93,21 @@ type entityEventTypeDeleted struct {
 	Name   string
 }
 
-func getSchema(txn *badger.Txn, schemaDec SchemaDecoder, stopper func(schema) bool) (schema, error) {
-	scm := schema{vsn: 0, entities: map[string]EntityType{}}
+func getSchema(txn *badger.Txn, schemaDec SchemaDecoder, stopper func(Schema) bool) (Schema, error) {
+	scm := Schema{VSN: 0, Entities: map[string]EntityType{}}
 	res, _, err := item.View(txn, schemaID, 0, schemaFolder(stopper, schemaDec), scm)
-	return res.(schema), err
+	return res.(Schema), err
 }
 
-type schema struct {
-	vsn      uint64
-	entities map[string]EntityType
-}
-
-func schemaFolder(stopper func(schema) bool, schemaDec SchemaDecoder) item.ViewFoldFunc {
+func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewFoldFunc {
 	return func(acc interface{}, evt item.Event, _ uint64) (out interface{}, stop bool, err error) {
 		// skip non-schema events (e.g. created)
 		if evt.Kind != EventKindSchema {
 			return acc, false, nil
 		}
-		scm := acc.(schema)
+		scm := acc.(Schema)
 		out = scm
-		scm.vsn++
+		scm.VSN++
 		stop = stopper(scm)
 
 		switch string(evt.Type) {
@@ -121,19 +116,19 @@ func schemaFolder(stopper func(schema) bool, schemaDec SchemaDecoder) item.ViewF
 			if err = decode(evt.Payload, e); err != nil {
 				return
 			}
-			scm.entities[e.Name] = EntityType{Name: e.Name, VSN: 0, Events: map[EventSchemaID]DataSchema{}}
+			scm.Entities[e.Name] = EntityType{Name: e.Name, VSN: 0, Events: map[EventSchemaID]DataSchema{}}
 		case entDeleted:
 			e := &entityTypeDeleted{}
 			if err = decode(evt.Payload, e); err != nil {
 				return
 			}
-			delete(scm.entities, e.Name)
+			delete(scm.Entities, e.Name)
 		case evtCreated:
 			e := &entityEventTypeCreated{}
 			if err = decode(evt.Payload, e); err != nil {
 				return
 			}
-			et := scm.entities[e.Entity]
+			et := scm.Entities[e.Entity]
 			et.VSN++
 			var evtSchema DataSchema
 			if evtSchema, err = schemaDec.Decode(e.SchemaBin); err != nil {
@@ -145,7 +140,7 @@ func schemaFolder(stopper func(schema) bool, schemaDec SchemaDecoder) item.ViewF
 			if err = decode(evt.Payload, e); err != nil {
 				return
 			}
-			et := scm.entities[e.Entity]
+			et := scm.Entities[e.Entity]
 			et.VSN++
 			var evtSchema DataSchema
 			if evtSchema, err = schemaDec.Decode(e.SchemaBin); err != nil {
@@ -163,7 +158,7 @@ func schemaFolder(stopper func(schema) bool, schemaDec SchemaDecoder) item.ViewF
 			if err = decode(evt.Payload, e); err != nil {
 				return
 			}
-			et := scm.entities[e.Entity]
+			et := scm.Entities[e.Entity]
 			et.VSN++
 			for k := range et.Events {
 				if k.Name == e.Name {
