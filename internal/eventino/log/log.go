@@ -38,8 +38,8 @@ func PutUnsafe(txn *badger.Txn, prefix uint8, ts uint64, event Event) (out Event
 // Replicate should only be used when the eventino instance is in
 // replica mode - it inserts the event at the precise timestamp/index
 // parameters
-func Replicate(txn *badger.Txn, event EventReplica) error {
-	return txn.SetWithMeta(event.ID.Encode(), event.Event.Payload, event.Event.Meta)
+func Replicate(txn *badger.Txn, event Event) error {
+	return txn.SetWithMeta(event.ID.Encode(), event.Payload, event.Meta)
 }
 
 // Get retrieve the event at the specified index
@@ -129,33 +129,4 @@ func RangeMatch(txn *badger.Txn, from EventID, to EventID, max int, m EventMatch
 	}
 
 	return out[0:added], nextEventID, err
-}
-
-// RangeReplica retrieve a chunk of events (with ids) from the log, ready to be
-// shipped and replicated on some other eventino instance running in replica mod
-func RangeReplica(txn *badger.Txn, from EventID, max int) (out []EventReplica, err error) {
-	var evt Event
-	pfx := from.Encode()
-	iter := txn.NewIterator(badger.DefaultIteratorOptions)
-	defer iter.Close()
-	for iter.Seek(pfx); iter.ValidForPrefix([]byte{logItemPfx}); iter.Next() {
-		item := iter.Item()
-		eid := EventID{}
-		err = DecodeEventID(item.Key(), &eid)
-		if err != nil {
-			return
-		}
-		// got enough events
-		if len(out) == max {
-			break
-		}
-
-		evt, err = decodeEvent(item)
-		if err != nil {
-			return
-		}
-		out = append(out, EventReplica{ID: eid, Event: evt})
-	}
-
-	return out, err
 }

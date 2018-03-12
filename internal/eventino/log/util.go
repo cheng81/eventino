@@ -2,6 +2,7 @@ package log
 
 import (
 	"errors"
+	"time"
 
 	"github.com/dgraph-io/badger"
 )
@@ -23,6 +24,16 @@ func NewEventID(prefix uint8, ts uint64, idx uint16) EventID {
 		Prefix:    prefix,
 		Timestamp: ts,
 		Index:     idx,
+	}
+}
+
+// NewEventIDNow produce an EventID for the gien prefix,
+// with timestamp = `uint64(time.Now().UnixName())` and index 0
+func NewEventIDNow(prefix uint8) EventID {
+	return EventID{
+		Prefix:    prefix,
+		Timestamp: uint64(time.Now().UnixNano()),
+		Index:     0,
 	}
 }
 

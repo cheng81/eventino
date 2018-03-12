@@ -140,24 +140,35 @@ func TestReplicate(t *testing.T) {
 		}
 
 		err = db.View(func(txn *badger.Txn) (err error) {
-			replicaEvents, err := RangeReplica(txn, EventID{Timestamp: ts, Index: 0}, 100)
+			var nextID *EventID
+			from := NewEventID(0, ts, 0)
+			to := NewEventIDNow(0)
+			events, nextID, err := Range(txn, from, to, 100)
+			if nextID != nil {
+				t.Fatal("nextID should be nil", nextID)
+			}
 			if err != nil {
 				return
 			}
-			for idx, replicaEvent := range replicaEvents {
-				if replicaEvent.ID.Prefix != 1 {
-					t.Fatal("wrong ID prefix", replicaEvent.ID.Prefix, 1)
+			for idx, event := range events {
+				if event.ID.Prefix != 1 {
+					t.Fatal("wrong ID prefix", event.ID.Prefix, 1)
 				}
-				if replicaEvent.ID.Timestamp != ts {
-					t.Fatal("wrong ID timestamp", replicaEvent.ID.Timestamp, ts)
+				if event.ID.Timestamp != ts {
+					t.Fatal("wrong ID timestamp", event.ID.Timestamp, ts)
 				}
-				if replicaEvent.ID.Index != uint16(idx) {
-					t.Fatal("wrong ID index", replicaEvent.ID.Index, idx)
+				if event.ID.Index != uint16(idx) {
+					t.Fatal("wrong ID index", event.ID.Index, idx)
 				}
-				if string(replicaEvent.Event.Payload) != fmt.Sprintf("%d", idx) {
-					t.Fatal("wronf Event payload", string(replicaEvent.Event.Payload), idx)
+				if string(event.Payload) != fmt.Sprintf("%d", idx) {
+					t.Fatal("wrong Event payload", string(event.Payload), idx)
 				}
 			}
+
+			if err = withTempDB(func(db2 *badger.DB) error { return testReplicate(t, events, db2, from, to) }); err != nil {
+				t.Fatal("cannot replicate", err)
+			}
+
 			return
 		})
 		if err != nil {
@@ -166,6 +177,80 @@ func TestReplicate(t *testing.T) {
 
 		return
 	})
+}
+
+func testReplicate(t *testing.T, origEvents []Event, db *badger.DB, from, to EventID) (err error) {
+	t.Log("replicate events", len(origEvents))
+	err = db.Update(func(txn *badger.Txn) (err error) {
+		for _, evt := range origEvents {
+			if err = Replicate(txn, evt); err != nil {
+				return
+			}
+		}
+		t.Log("done replicating")
+		return
+	})
+	if err != nil {
+		t.Fatal("cannot write", err)
+		return
+	}
+	err = db.View(func(txn *badger.Txn) (err error) {
+		var nextID *EventID
+		events, nextID, err := Range(txn, from, to, 100)
+		if nextID != nil {
+			t.Fatal("nextID should be nil", nextID)
+		}
+		if err != nil {
+			return
+		}
+		eqEvt := func(a, b Event) bool {
+			if a.ID.Prefix != b.ID.Prefix {
+				t.Fatal("mismatch prefix", a.ID, b.ID)
+				return false
+			}
+			if a.ID.Timestamp != b.ID.Timestamp {
+				t.Fatal("mismatch timestamp", a.ID, b.ID)
+				return false
+			}
+			if a.ID.Index != b.ID.Index {
+				t.Fatal("mismatch index", a.ID, b.ID)
+				return false
+			}
+			if a.Meta != b.Meta {
+				t.Fatal("mismatch meta", a.Meta, b.Meta)
+				return false
+			}
+			if string(a.Payload) != string(b.Payload) {
+				t.Fatal("mismatch payload", string(a.Payload), string(b.Payload))
+				return false
+			}
+
+			return true
+		}
+		for idx, event := range events {
+			if !eqEvt(event, origEvents[idx]) {
+				t.Fatal("events mismatch", event, origEvents[idx])
+			}
+			// if event.ID.Prefix != 1 {
+			// 	t.Fatal("wrong ID prefix", event.ID.Prefix, 1)
+			// }
+			// if event.ID.Timestamp != ts {
+			// 	t.Fatal("wrong ID timestamp", event.ID.Timestamp, ts)
+			// }
+			// if event.ID.Index != uint16(idx) {
+			// 	t.Fatal("wrong ID index", event.ID.Index, idx)
+			// }
+			// if string(event.Payload) != fmt.Sprintf("%d", idx) {
+			// 	t.Fatal("wrong Event payload", string(event.Payload), idx)
+			// }
+		}
+
+		return
+	})
+	if err != nil {
+		t.Fatal("cannot read", err)
+	}
+	return
 }
 
 func TestOrderPrefix(t *testing.T) {

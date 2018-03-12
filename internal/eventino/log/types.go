@@ -4,15 +4,6 @@ import (
 	"encoding/binary"
 )
 
-// EventReplica represents an log item
-// together with its id, to be sent
-// over the wire to some other eventino
-// running in replica mode
-type EventReplica struct {
-	ID    EventID
-	Event Event
-}
-
 // EventID represents an log item
 type EventID struct {
 	// Prefix is used by Schema and Data layer to
