@@ -39,6 +39,8 @@ var AliasExistsError error
 
 var AliasNotFoundError error
 
+var AliasNotFoundInItemError error
+
 func init() {
 	NotAliasEvent = errors.New("Not an alias event")
 	NoItemIDError = errors.New("Not an itemId")
@@ -47,6 +49,7 @@ func init() {
 	ItemNotFoundError = errors.New("Item not found")
 	AliasExistsError = errors.New("Alias exists")
 	AliasNotFoundError = errors.New("Alias not found")
+	AliasNotFoundInItemError = errors.New("Alias not found in item")
 }
 
 func NewItemID(itemType uint8, id []byte) ItemID {
@@ -69,6 +72,10 @@ func IsAliasEvent(e Event) bool {
 	return len(e.Type) == len(aliasEventType) && len(e.Type) == 1 && e.Type[0] == aliasEventType[0]
 }
 
+func IsAliasDeleteEvent(e Event) bool {
+	return len(e.Type) == len(aliasDeleteEventType) && len(e.Type) == 1 && e.Type[0] == aliasDeleteEventType[0]
+}
+
 func itemExists(txn *badger.Txn, id ItemID) (bool, error) {
 	_, err := txn.Get(id.KeyVSN())
 	if err == nil {
@@ -89,6 +96,27 @@ func aliasExists(txn *badger.Txn, alias ItemID) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func aliasResolve(txn *badger.Txn, aliasID ItemID) (srcID ItemID, err error) {
+	var exists bool
+	var item *badger.Item
+	if exists, err = aliasExists(txn, aliasID); !exists || err != nil {
+		if err != nil {
+			return
+		}
+		return ItemID{}, AliasNotFoundError
+	}
+	if item, err = txn.Get(aliasID.AliasKey()); err != nil {
+		return
+	}
+	var val []byte
+	if val, err = item.Value(); err != nil {
+		return
+	}
+	srcID, err = DecodeItemID(val)
+
+	return
 }
 
 func wrapLogEvent(ID ItemID, evt Event) (log.Event, error) {

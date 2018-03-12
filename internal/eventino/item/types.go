@@ -48,6 +48,7 @@ type PersistentViewFold interface {
 var createdEventType []byte
 var deletedEventType []byte
 var aliasEventType []byte
+var aliasDeleteEventType []byte
 
 // CREATED is the shared Item Created event
 var CREATED Event
@@ -59,6 +60,7 @@ func init() {
 	createdEventType = []byte{99}
 	deletedEventType = []byte{100}
 	aliasEventType = []byte{97}
+	aliasDeleteEventType = []byte{120}
 	CREATED = Event{Kind: EventKindSystem, Type: createdEventType, Payload: []byte{}}
 	DELETED = Event{Kind: EventKindSystem, Type: deletedEventType, Payload: []byte{}}
 }
@@ -68,6 +70,15 @@ func NewAliasEvent(aliasID ItemID) Event {
 	return Event{
 		Kind:    EventKindSystem,
 		Type:    aliasEventType,
+		Payload: aliasID.Encode(),
+	}
+}
+
+// NewAliasDeleteEvent returns an alias delete event
+func NewAliasDeleteEvent(aliasID ItemID) Event {
+	return Event{
+		Kind:    EventKindSystem,
+		Type:    aliasDeleteEventType,
 		Payload: aliasID.Encode(),
 	}
 }

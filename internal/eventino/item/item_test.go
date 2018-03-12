@@ -334,7 +334,7 @@ func TestPersistentView(t *testing.T) {
 				}
 			}
 
-			if err = SyncPersistenView(txn, id, viewName, testView{}, 0); err != nil {
+			if err = SyncPersistentView(txn, id, viewName, testView{}, 0); err != nil {
 				return
 			}
 
@@ -365,7 +365,7 @@ func TestPersistentView(t *testing.T) {
 				}
 			}
 
-			if err = SyncPersistenView(txn, id, viewName, testView{}, 0); err != nil {
+			if err = SyncPersistentView(txn, id, viewName, testView{}, 0); err != nil {
 				return
 			}
 

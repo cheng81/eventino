@@ -159,6 +159,54 @@ func Alias(txn *badger.Txn, src ItemID, alias ItemID) (err error) {
 	return
 }
 
+// AliasDelete removes an item alias
+func AliasDelete(txn *badger.Txn, src, alias ItemID) (err error) {
+	var aliasSrcID ItemID
+	if aliasSrcID, err = aliasResolve(txn, alias); err != nil {
+		return
+	}
+	if bytes.Compare(src.ID, aliasSrcID.ID) != 0 || src.Type != aliasSrcID.Type {
+		err = AliasNotFoundInItemError
+		return
+	}
+
+	if _, err = Put(txn, src, NewAliasDeleteEvent(alias)); err != nil {
+		return
+	}
+
+	if err = txn.Delete(alias.AliasKey()); err != nil {
+		return
+	}
+
+	var item *badger.Item
+	var val []byte
+	var aliases aliasesWire
+	if item, err = txn.Get(src.KeyAliases()); err != nil {
+		return
+	}
+	if val, err = item.Value(); err != nil {
+		return
+	}
+	if err = decode(val, &aliases); err != nil {
+		return
+	}
+
+	aliasID := alias.ID
+	for i := len(aliases.Aliases) - 1; i >= 0; i-- {
+		if bytes.Compare(aliases.Aliases[i].ID, aliasID) == 0 && aliases.Aliases[i].Type == alias.Type {
+			aliases.Aliases = append(aliases.Aliases[:i], aliases.Aliases[i+1:]...)
+			break
+		}
+	}
+
+	if val, err = encode(aliases); err != nil {
+		return
+	}
+	err = txn.Set(src.KeyAliases(), val)
+
+	return
+}
+
 // LatestVSN returns the latest version of the item
 func LatestVSN(txn *badger.Txn, ID ItemID) (out uint64, err error) {
 	return itemVsn(txn, ID)
@@ -166,23 +214,8 @@ func LatestVSN(txn *badger.Txn, ID ItemID) (out uint64, err error) {
 
 // GetByAlias retrieves an item from the given aliasID
 func GetByAlias(txn *badger.Txn, aliasID ItemID, fromVsn uint64, toVsn uint64) (out Item, err error) {
-	var exists bool
-	var item *badger.Item
-	if exists, err = aliasExists(txn, aliasID); !exists || err != nil {
-		if err != nil {
-			return
-		}
-		return Item{}, AliasNotFoundError
-	}
-	if item, err = txn.Get(aliasID.AliasKey()); err != nil {
-		return
-	}
-	var val []byte
-	if val, err = item.Value(); err != nil {
-		return
-	}
 	var srcID ItemID
-	if srcID, err = DecodeItemID(val); err != nil {
+	if srcID, err = aliasResolve(txn, aliasID); err != nil {
 		return
 	}
 	return Get(txn, srcID, fromVsn, toVsn)
@@ -211,7 +244,7 @@ func GetView(txn *badger.Txn, ID ItemID, stateName []byte, view PersistentViewFo
 
 // SyncPersistentView applies the fold function to the item events,
 // and persist the result
-func SyncPersistenView(txn *badger.Txn, ID ItemID, stateName []byte,
+func SyncPersistentView(txn *badger.Txn, ID ItemID, stateName []byte,
 	view PersistentViewFold, initial interface{}) (err error) {
 	var k []byte
 	var item *badger.Item
@@ -353,15 +386,15 @@ func RangePrefix(txn *badger.Txn, itemPfx ItemID, from, to log.EventID, max int)
 // Replicate applies the changes specified in the log.EventReplica
 // to the item layer. It will not add the event to the log,
 // caller should ensure to write the event to the log.
-func Replicate(txn *badger.Txn, evt log.EventReplica) error {
-	eventWire, err := unwrapLogEventWire(evt.Event)
+func Replicate(txn *badger.Txn, evt log.Event) error {
+	eventWire, err := unwrapLogEventWire(evt)
 	if err != nil {
 		return err
 	}
 	ID := eventWire.ID
 	event := Event{
 		LogID:   evt.ID,
-		Kind:    evt.Event.Meta,
+		Kind:    evt.Meta,
 		Type:    eventWire.EventType,
 		Payload: eventWire.Payload,
 	}
@@ -405,6 +438,42 @@ func Replicate(txn *badger.Txn, evt log.EventReplica) error {
 			return err
 		}
 		aliases.Aliases = append(aliases.Aliases, aliasID)
+		if val, err = encode(aliases); err != nil {
+			return err
+		}
+		return txn.Set(ID.KeyAliases(), val)
+	}
+	if IsAliasDeleteEvent(event) {
+		if _, err = putItem(txn, ID, evt.ID); err != nil {
+			return err
+		}
+		aliasID, err := AliasFromEvent(event)
+		if err != nil {
+			return err
+		}
+		if err = txn.Delete(aliasID.AliasKey()); err != nil {
+			return err
+		}
+		var item *badger.Item
+		var aliases aliasesWire
+		var val []byte
+		if item, err = txn.Get(ID.KeyAliases()); err != nil {
+			return err
+		}
+		if val, err = item.Value(); err != nil {
+			return err
+		}
+		if err = decode(val, &aliases); err != nil {
+			return err
+		}
+		aliasIDID := aliasID.ID
+		for i := len(aliases.Aliases) - 1; i >= 0; i-- {
+			if bytes.Compare(aliases.Aliases[i].ID, aliasIDID) == 0 && aliases.Aliases[i].Type == aliasID.Type {
+				aliases.Aliases = append(aliases.Aliases[:i], aliases.Aliases[i+1:]...)
+				break
+			}
+		}
+
 		if val, err = encode(aliases); err != nil {
 			return err
 		}
