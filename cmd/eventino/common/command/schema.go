@@ -33,46 +33,6 @@ func (c *CreateEntityType) AvroSchema() map[string]interface{} {
 	}
 }
 
-type EntityCreated struct {
-	Name string
-	VSN  uint64
-}
-
-func (c *EntityCreated) Is(m map[string]interface{}) bool {
-	_, ok := m["entityCreated"]
-	return ok
-}
-func (c *EntityCreated) Encode() map[string]interface{} {
-	return map[string]interface{}{
-		"entityCreated": map[string]interface{}{
-			"name": c.Name,
-			"vsn":  int64(c.VSN),
-		},
-	}
-}
-func (c *EntityCreated) Decode(m map[string]interface{}) {
-	if c.Is(m) {
-		c.Name = m["entityCreated"].(map[string]interface{})["name"].(string)
-		c.VSN = uint64(m["entityCreated"].(map[string]interface{})["vsn"].(int64))
-	}
-}
-func (c *EntityCreated) AvroSchema() map[string]interface{} {
-	return map[string]interface{}{
-		"type": "record",
-		"name": "entityCreated",
-		"fields": []map[string]interface{}{
-			map[string]interface{}{
-				"type": "string",
-				"name": "name",
-			},
-			map[string]interface{}{
-				"type": "long",
-				"name": "vsn",
-			},
-		},
-	}
-}
-
 type SchemaResponse struct {
 	Operation string
 	VSN       uint64
