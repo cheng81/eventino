@@ -47,6 +47,10 @@ An item `event` consists of:
  - a `payload []byte`
  - the `log EventID` is available to, for instance, know at which `timestamp` the event happened
 
+TODO:
+facilitate range-item deletion,
+change VSN key from `<itemid>:v` to `v:<itemid>`, so that we can iterate on keys `v:<itemid-pfx>`
+
 #### Aliases ####
 
 An `item` can be aliased, which means that a link can be created between two `ItemID`.
