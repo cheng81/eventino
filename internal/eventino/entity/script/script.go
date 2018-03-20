@@ -7,15 +7,17 @@ import (
 	"github.com/cheng81/eventino/internal/eventino/schema"
 	"github.com/dgraph-io/badger"
 	"github.com/robertkrimen/otto"
+	// add underscore
+	_ "github.com/robertkrimen/otto/underscore"
 )
 
-//type ViewFoldFunc func(interface{}, EntityEvent, uint64) (interface{}, bool, error)
 func buildViewFun(vm *otto.Otto, handler otto.Value) entity.ViewFoldFunc {
 	fmt.Println("called buildViewFun")
 	var fn func(interface{}, entity.EntityEvent, uint64) (interface{}, error)
 	nullVal := otto.NullValue()
 
 	if handler.IsFunction() {
+		fmt.Println("#%#%#%#%#% BUILD SCRIPT FN - FUNC STYLE")
 		fn = func(acc interface{}, evt entity.EntityEvent, vsn uint64) (interface{}, error) {
 			val, err := handler.Call(nullVal, evt.Type.Name, evt.Type.VSN, evt.Payload, acc, vsn)
 			if err != nil {
@@ -24,18 +26,19 @@ func buildViewFun(vm *otto.Otto, handler otto.Value) entity.ViewFoldFunc {
 			return val.Export()
 		}
 	} else {
+		fmt.Println("#%#%#%#%#% BUILD SCRIPT FN - OBJECT STYLE")
 		objHandler := handler.Object()
 		fn = func(acc interface{}, evt entity.EntityEvent, vsn uint64) (interface{}, error) {
 			k := fmt.Sprintf("%s_%d", evt.Type.Name, evt.Type.VSN)
 			evtHandler, err := objHandler.Get(k)
-			fmt.Println("objHandler k", k, evtHandler)
+			fmt.Println("######### objHandler k", k, evtHandler)
 			if err != nil {
 				// TODO: just discard event in this case
 				return nil, err
 			}
 			if evtHandler.IsFunction() {
 				val, err := evtHandler.Call(nullVal, acc, evt.Payload, vsn)
-				fmt.Println("objHandler called", k, val)
+				fmt.Println("########## objHandler called", k, val)
 				if err != nil {
 					return nil, err
 				}
@@ -46,7 +49,7 @@ func buildViewFun(vm *otto.Otto, handler otto.Value) entity.ViewFoldFunc {
 	}
 
 	return func(acc interface{}, evt entity.EntityEvent, vsn uint64) (interface{}, bool, error) {
-		fmt.Println("SCRIPT CALLED", acc, evt.Type)
+		fmt.Println("!!!!!!!!! SCRIPT CALLED", acc, evt.Type)
 		val, err := fn(acc, evt, vsn)
 		if err != nil {
 			return nil, true, err
@@ -62,6 +65,6 @@ func View(txn *badger.Txn, src string, entType schema.EntityType, ID []byte, fro
 		fmt.Println("Cannot compile", err)
 	}
 	initial := map[string]interface{}{}
-	fmt.Println("about to call view")
+	fmt.Println(">>>>>>>>> about to call entity.view")
 	return entity.View(txn, entType, ID, fromVsn, buildViewFun(vm, handler), initial)
 }

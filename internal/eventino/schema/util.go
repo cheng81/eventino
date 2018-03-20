@@ -3,24 +3,36 @@ package schema
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
+	"errors"
 
 	"github.com/cheng81/eventino/internal/eventino/item"
 )
 
+const eventIndexKind byte = 8
+const eventIndexType string = "NEWENT"
+
 var schemaID item.ItemID
+
+var EntityTypeNotFound error
+var EntityExists error
 
 func init() {
 	schemaID = item.NewItemID(0, []byte("SCHEMA"))
+	EntityTypeNotFound = errors.New("entity type not found")
+	EntityExists = errors.New("entity already exists")
 }
 
-func SchemaID(entityType string) item.ItemID {
-	return item.NewItemID(0, []byte(fmt.Sprintf("schema:%s", entityType)))
-}
+// func EntityIndexID(entityType string) item.ItemID {
+// 	return item.NewItemID(0, []byte(fmt.Sprintf("schema:index:%s", entityType)))
+// }
 
-func EventID(entityType, eventType string) item.ItemID {
-	return item.NewItemID(0, []byte(fmt.Sprintf("schema:%s:%s", entityType, eventType)))
-}
+// func NewEntityItemIndex(entityID []byte) item.Event {
+// 	return item.NewEvent(eventIndexKind, []byte(eventIndexType), entityID)
+// }
+
+// func EventID(entityType, eventType string) item.ItemID {
+// 	return item.NewItemID(0, []byte(fmt.Sprintf("schema:%s:%s", entityType, eventType)))
+// }
 
 type schemaWire struct {
 	Name   string

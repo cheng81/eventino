@@ -389,3 +389,6 @@ func TestPersistentView(t *testing.T) {
 		return
 	})
 }
+
+// TODO: test alias delete
+// TODO: test replicate

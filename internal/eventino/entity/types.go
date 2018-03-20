@@ -1,10 +1,19 @@
 package entity
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 const (
 	EventKindEntity = 8
 )
+
+var EventVSNNotFound error
+
+func init() {
+	EventVSNNotFound = errors.New("Event-VSN not found")
+}
 
 type EntityEventType struct {
 	Name string

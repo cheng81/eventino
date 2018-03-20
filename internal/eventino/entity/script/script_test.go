@@ -74,15 +74,6 @@ func TestOtto3(t *testing.T) {
 	if outIVal != 5 {
 		t.Fatal("result is not 5", outIVal)
 	}
-
-	// iVal, err := val.ToInteger()
-	// if err != nil {
-	// 	t.Fatal("cannot toInt", err)
-	// }
-	// if iVal != 42 {
-	// 	t.Fatal("val is not 42", iVal)
-	// }
-	// t.Log(iVal)
 }
 
 func TestOtto2(t *testing.T) {
@@ -182,18 +173,18 @@ func TestOtto(t *testing.T) {
 
 const testObj string = `
 var handlers = {
-	Created_0: function accumCreated (acc, evt, vsn) {
+	Created_0: function(acc, evt, vsn) {
 		acc['name'] = evt['Name'];
 		acc['paying'] = evt['Paying'];
 		acc['latest'] = vsn;
 		return acc;
 	},
-	Updated_0: function accumUpdated (acc, evt, vsn) {
+	Updated_0: function(acc, evt, vsn) {
 		acc['email'] = evt['Email'];
 		acc['latest'] = vsn;
 		return acc;
 	},
-	Updated_1: function accumUpdated (acc, evt, vsn) {
+	Updated_1: function(acc, evt, vsn) {
 		acc['email'] = evt['Mail'];
 		acc['phone'] = evt['Phone'];
 		acc['latest'] = vsn;
@@ -267,10 +258,6 @@ func TestView(t *testing.T) {
 			if _, err = entity.Put(txn, entTyp, entID, schema.NewEventSchemaID("Updated", 0), updatedRec); err != nil {
 				return
 			}
-
-			// if err = updateSchema(txn); err != nil {
-			// 	return
-			// }
 
 			updatedRec = map[string]interface{}{
 				"Mail":     "wow@muchmail-suchcheng.com",
@@ -347,10 +334,10 @@ func updateSchema(txn *badger.Txn) error {
 
 func mkSchema(db *badger.DB) error {
 	return db.Update(func(txn *badger.Txn) (err error) {
-		if err = schema.CreateEntityType(txn, "User"); err != nil {
+		factory := schemaavro.Factory()
+		if err = schema.CreateEntityType(txn, factory.Decoder(), "User"); err != nil {
 			return
 		}
-		factory := schemaavro.Factory()
 		boolSchema := factory.SimpleType(schema.Bool)
 		stringSchema := factory.SimpleType(schema.String)
 		nullSchema := factory.SimpleType(schema.Null)

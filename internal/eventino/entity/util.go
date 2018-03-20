@@ -10,16 +10,6 @@ import (
 	"github.com/cheng81/eventino/internal/eventino/schema"
 )
 
-func entityID(typ schema.EntityType, ID []byte) item.ItemID {
-	typName := []byte(typ.Name)
-	l := len(typName)
-	b := make([]byte, l+len(ID)+1)
-	b[l] = byte(':')
-	copy(b[0:], typName)
-	copy(b[l+1:], ID)
-	return item.NewItemID(1, b)
-}
-
 func entityEvt(typ schema.EntityType, evtID schema.EventSchemaID, payload interface{}) (out item.Event, err error) {
 	var evtType []byte
 	var evtPayload []byte
@@ -81,10 +71,11 @@ func mapEvents(typ schema.EntityType, evts []item.Event) ([]EntityEvent, error) 
 	for _, evt := range evts {
 		if evt.Kind == EventKindEntity {
 			entEvt, err := mapEvent(typ, evt)
-			if err != nil {
+			if err == nil {
+				out = append(out, entEvt)
+			} else if err != nil && err != EventVSNNotFound {
 				return out, err
 			}
-			out = append(out, entEvt)
 		}
 	}
 	return out, nil
@@ -100,7 +91,7 @@ func mapEvent(typ schema.EntityType, evt item.Event) (out EntityEvent, err error
 	var payload interface{}
 
 	if scm, exists = typ.Events[schema.EventSchemaID{Name: evttyp.Event, VSN: evttyp.VSN}]; !exists {
-		err = errors.New("Cannot find event-VSN in entity schema")
+		err = EventVSNNotFound
 		return
 	}
 	dec := scm.Decoder()

@@ -94,6 +94,12 @@ func TestAllSchema(t *testing.T) {
 	}
 	boolT := simple["Simple"].(string)
 	t.Log("it's a bool!", boolT)
+
+	textualEncoded, err := codec.TextualFromNative(nil, arrayBoolSchema)
+	if err != nil {
+		t.Fatal("cannot encode textual", err)
+	}
+	t.Log("textualEncoded", string(textualEncoded))
 }
 
 func TestBoolSchema(t *testing.T) {

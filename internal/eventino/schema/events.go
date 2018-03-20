@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"fmt"
+
 	"github.com/cheng81/eventino/internal/eventino/item"
 	"github.com/dgraph-io/badger"
 )
@@ -93,21 +95,51 @@ type entityEventTypeDeleted struct {
 	Name   string
 }
 
+type recordTypeCreated struct {
+	Name      string
+	SchemaBin []byte
+}
+
+type recordTypeUpdated struct {
+	Name      string
+	SchemaBin []byte
+}
+
+type recordTypeDeleted struct {
+	Name string
+}
+
+type enumTypeCreated struct {
+	Name   string
+	Values []string
+}
+
+type enumTypeUpdated struct {
+	Name   string
+	Values []string
+}
+
+type enumTypeDeleted struct {
+	Name string
+}
+
 func getSchema(txn *badger.Txn, schemaDec SchemaDecoder, stopper func(Schema) bool) (Schema, error) {
 	scm := Schema{VSN: 0, Entities: map[string]EntityType{}}
-	res, _, err := item.View(txn, schemaID, 0, schemaFolder(stopper, schemaDec), scm)
+	res, itemVsn, err := item.View(txn, schemaID, 0, schemaFolder(stopper, schemaDec), scm)
+	fmt.Println("getSchema vsn", res.(Schema).VSN, itemVsn)
 	return res.(Schema), err
 }
 
 func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewFoldFunc {
 	return func(acc interface{}, evt item.Event, _ uint64) (out interface{}, stop bool, err error) {
 		// skip non-schema events (e.g. created)
+		fmt.Println("schemaFolder", evt.Kind, EventKindSchema, acc.(Schema).VSN)
 		if evt.Kind != EventKindSchema {
 			return acc, false, nil
 		}
 		scm := acc.(Schema)
-		out = scm
 		scm.VSN++
+		fmt.Println("schemaFolder - kind right", scm.VSN, scm)
 		stop = stopper(scm)
 
 		switch string(evt.Type) {
@@ -146,13 +178,13 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 			if evtSchema, err = schemaDec.Decode(e.SchemaBin); err != nil {
 				return
 			}
+			latestVsn := uint64(0)
 			for k := range et.Events {
-				if k.Name == e.Name {
-					k.VSN++
-					et.Events[k] = evtSchema
-					break
+				if k.Name == e.Name && k.VSN > latestVsn {
+					latestVsn = k.VSN
 				}
 			}
+			et.Events[NewEventSchemaID(e.Name, latestVsn+1)] = evtSchema
 		case evtDeleted:
 			e := &entityEventTypeDeleted{}
 			if err = decode(evt.Payload, e); err != nil {
@@ -168,6 +200,7 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 		default:
 		}
 
-		return
+		fmt.Println("schemaFolder - out ", scm)
+		return scm, false, nil
 	}
 }

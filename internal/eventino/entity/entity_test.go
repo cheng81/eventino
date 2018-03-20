@@ -227,10 +227,10 @@ func TestCreateUpdate(t *testing.T) {
 
 func mkSchema(db *badger.DB) error {
 	return db.Update(func(txn *badger.Txn) (err error) {
-		if err = schema.CreateEntityType(txn, "User"); err != nil {
+		factory := schemaavro.Factory()
+		if err = schema.CreateEntityType(txn, factory.Decoder(), "User"); err != nil {
 			return
 		}
-		factory := schemaavro.Factory()
 		boolSchema := factory.SimpleType(schema.Bool)
 		stringSchema := factory.SimpleType(schema.String)
 		nullSchema := factory.SimpleType(schema.Null)

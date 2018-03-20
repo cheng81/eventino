@@ -1,10 +1,19 @@
 package schema
 
+import (
+	"github.com/cheng81/eventino/internal/eventino/item"
+)
+
 type Schema struct {
 	VSN      uint64
+	Records  map[EventSchemaID]DataSchema
+	Enums    map[EventSchemaID]DataSchema
 	Entities map[string]EntityType
 }
 
+// TODO: consider renaming, since it is used
+// as index on basically any schema item, e.g.
+// SchemaItemID
 type EventSchemaID struct {
 	Name string
 	VSN  uint64
@@ -20,16 +29,39 @@ type EntityType struct {
 	Events map[EventSchemaID]DataSchema
 }
 
-func (et EntityType) Latest(evtName string) (DataSchema, uint64, bool) {
-	var latestVSN uint64
-	for evtID := range et.Events {
-		if evtID.Name == evtName && evtID.VSN > latestVSN {
-			latestVSN = evtID.VSN
-		}
-	}
-	scm, exists := et.Events[EventSchemaID{Name: evtName, VSN: latestVSN}]
-	return scm, latestVSN, exists
+func (typ EntityType) EntityID(ID []byte) item.ItemID {
+	typName := []byte(typ.Name)
+	l := len(typName)
+	b := make([]byte, l+len(ID)+1)
+	b[l] = byte(':')
+	copy(b[0:], typName)
+	copy(b[l+1:], ID)
+	return item.NewItemID(1, b)
 }
+
+// func (typ EntityType) AliasIndex(idx uint64) item.ItemID {
+// 	typName := []byte(typ.Name)
+// 	l := len(typName)
+// 	b := make([]byte, l+3)
+// 	b[l] = byte(':')
+// 	b[l+1] = byte('I')
+// 	b[l+2] = byte(':')
+// 	copy(b[0:], typName)
+// 	binary.BigEndian.PutUint64(b[l+3], entIntID)
+// 	return item.NewItemID(2, b)
+// }
+
+// possibly not needed/bad practice
+// func (et EntityType) Latest(evtName string) (DataSchema, uint64, bool) {
+// 	var latestVSN uint64
+// 	for evtID := range et.Events {
+// 		if evtID.Name == evtName && evtID.VSN > latestVSN {
+// 			latestVSN = evtID.VSN
+// 		}
+// 	}
+// 	scm, exists := et.Events[EventSchemaID{Name: evtName, VSN: latestVSN}]
+// 	return scm, latestVSN, exists
+// }
 
 type SchemaFactory interface {
 	SimpleType(DataType) DataSchema

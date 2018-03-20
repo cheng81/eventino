@@ -2,6 +2,7 @@ package schema
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/cheng81/eventino/internal/eventino/item"
 	"github.com/dgraph-io/badger"
@@ -37,27 +38,87 @@ func SchemaVSN(txn *badger.Txn, dec SchemaDecoder) (vsn uint64, err error) {
 		return
 	}
 	vsn = scm.VSN
+	fmt.Println("SchemaVSN", scm.VSN, vsn)
 	return
 }
 
 // CreateEntityType initializes a new entity type
-func CreateEntityType(txn *badger.Txn, name string) (err error) {
+func CreateEntityType(txn *badger.Txn, dec SchemaDecoder, name string) (err error) {
 	if err = EnsureSchema(txn); err != nil {
 		return
 	}
+
+	if _, err = GetEntityType(txn, dec, name, 0); err != EntityTypeNotFound {
+		return EntityExists
+	}
+
 	var evt item.Event
 	if evt, err = newEntityCreated(name); err != nil {
 		return
 	}
+	// if
 	_, err = item.Put(txn, schemaID, evt)
+	// ; err != nil {
+	// 	return
+	// }
+
+	// err = item.Create(txn, EntityIndexID(name))
 	return
 }
 
+func ClearEntities(txn *badger.Txn, name string, from *item.ItemID, max int) (err error) {
+	// to be called after DeleteEntityType
+	// idea is to iterate on
+	// enttype:<...>:VSN
+	// coolect N "<...>" and delete them
+	return errors.New("clearentities not implemented")
+}
+
 // DeleteEntityType removes an entity type from the schema
-func DeleteEntityType(txn *badger.Txn, name string) (err error) {
+func DeleteEntityType(txn *badger.Txn, name string, dec SchemaDecoder) (err error) {
 	if err = EnsureSchema(txn); err != nil {
 		return
 	}
+
+	// grab latest schema version
+	var schema Schema
+	// var typ EntityType
+	var ok bool
+	if schema, err = getSchema(txn, dec, func(_ Schema) bool { return false }); err != nil {
+		return
+	}
+	// check entity type exists
+	if _, ok = schema.Entities[name]; !ok {
+		return errors.New("entity type not found")
+	}
+
+	// grab entity index item
+	// TODO: this will fail for large
+	// entities, consider another approach
+	// to remove entities on type deletion
+	// - could take a long time
+	// - badger might throw a "txn too big" error
+	// instead, provide a "cleanup" function
+	// that tried to delete a batch of entities
+	// possibly in the entity package?
+	// var indexVsn uint64
+	// indexID := EntityIndexID(name)
+	// if indexVsn, err = item.LatestVSN(txn, indexID); err != nil {
+	// 	return
+	// }
+	// var index item.Item
+	// if index, err = item.Get(txn, EntityIndexID(name), 0, indexVsn); err != nil {
+	// 	return
+	// }
+	// // iterate on events, and delete items as we go
+	// for _, itm := range index.Events {
+	// 	if string(itm.Type) == eventIndexType {
+	// 		if err = item.Delete(txn, typ.EntityID(itm.Payload)); err != nil {
+	// 			return
+	// 		}
+	// 	}
+	// }
+
 	var evt item.Event
 	if evt, err = newEntityDeleted(name); err != nil {
 		return
@@ -83,7 +144,7 @@ func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) 
 	}
 	var ok bool
 	if out, ok = scm.Entities[name]; !ok {
-		return out, errors.New("entity type not found")
+		return out, EntityTypeNotFound
 	}
 	return
 }
