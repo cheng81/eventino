@@ -46,7 +46,7 @@
 [[projects]]
   branch = "master"
   name = "github.com/robertkrimen/otto"
-  packages = [".","ast","dbg","file","parser","registry","token"]
+  packages = [".","ast","dbg","file","parser","registry","repl","token","underscore"]
   revision = "6c383dd335ef8dcccef05e651ce1eccfe4d0f011"
 
 [[projects]]
@@ -62,6 +62,12 @@
   revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
 [[projects]]
+  name = "gopkg.in/readline.v1"
+  packages = ["."]
+  revision = "62c6fe6193755f722b8b8788aa7357be55a50ff1"
+  version = "v1.4"
+
+[[projects]]
   name = "gopkg.in/sourcemap.v1"
   packages = [".","base64vlq"]
   revision = "6e83acea0053641eff084973fee085f0c193c61a"
@@ -70,6 +76,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f49b3789a76e58a259d9cb5b7bd4cb52a871fe4028608f3f8fd83a7c9657a9ae"
+  inputs-digest = "67c526bbb4065a292b7afa3c1c4fa56dfd5e7f4415cbdbed701ff08faf61bbb8"
   solver-name = "gps-cdcl"
   solver-version = 1
