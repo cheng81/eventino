@@ -6,3 +6,12 @@ type Command interface {
 	Decode(map[string]interface{})
 	AvroSchema() map[string]interface{}
 }
+
+func IsCommand(key string, cmd map[string]interface{}) bool {
+	_, ok := cmd[key]
+	return ok
+}
+
+func IsData(cmd map[string]interface{}) bool {
+	return IsCommand("data", cmd)
+}
