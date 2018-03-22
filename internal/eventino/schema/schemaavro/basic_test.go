@@ -6,6 +6,43 @@ import (
 	"github.com/linkedin/goavro"
 )
 
+func TestAvro(t *testing.T) {
+	src := `{
+		"type": "record",
+		"name": "event",
+		"fields": [{
+			"name": "data",
+			"type": [{
+				"type": "record",
+				"name": "foo",
+				"fields": [{
+					"name": "data", "type": {"type": "string"}
+				}]
+		}
+		]
+	}]}`
+	codec, _ := goavro.NewCodec(src)
+	t.Log(codec.Schema())
+
+	native := map[string]interface{}{
+		"data": map[string]interface{}{
+			"foo": map[string]interface{}{"data": "helo"},
+		},
+	}
+	bin, err := codec.BinaryFromNative(nil, native)
+	if err != nil {
+		t.Fatal("should encode", err)
+	}
+	native2, _, err := codec.NativeFromBinary(bin)
+	if err != nil {
+		t.Fatal("should decode", err)
+	}
+	if native["data"].(map[string]interface{})["foo"].(map[string]interface{})["data"] !=
+		native2.(map[string]interface{})["data"].(map[string]interface{})["foo"].(map[string]interface{})["data"] {
+		t.Fatal("data should match")
+	}
+}
+
 func TestAllSchema(t *testing.T) {
 	src := `
 	{

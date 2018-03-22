@@ -1,8 +1,11 @@
 package schemaavro
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/cheng81/eventino/internal/eventino/schema"
 
@@ -58,9 +61,15 @@ const avroSchemaSchema = `
 }
 `
 
+var MetaSchema map[string]interface{}
+
 func init() {
 	var err error
 	avroSchemaCodec, err = goavro.NewCodec(avroSchemaSchema)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal([]byte(avroSchemaSchema), &MetaSchema)
 	if err != nil {
 		panic(err)
 	}
@@ -93,6 +102,92 @@ func (_ avroSchemaFactory) Decoder() schema.SchemaDecoder {
 	return avroSchemaDecoder{}
 }
 
+type byName []struct {
+	name  string
+	specs schema.DataSchema
+}
+
+func (a byName) Len() int      { return len(a) }
+func (a byName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byName) Less(i, j int) bool {
+	var x string
+	var y string
+	x = a[i].name
+	y = a[j].name
+	return strings.Compare(x, y) > 0
+}
+
+type byNameMap []map[string]interface{}
+
+func (a byNameMap) Len() int      { return len(a) }
+func (a byNameMap) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byNameMap) Less(i, j int) bool {
+	x := a[i]["name"].(string)
+	y := a[j]["name"].(string)
+	return strings.Compare(x, y) > 0
+}
+
+func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
+	ents := []map[string]interface{}{}
+	for name, typ := range s.Entities {
+		if len(typ.Events) == 0 {
+			continue
+		}
+		ordered := []struct {
+			name  string
+			specs schema.DataSchema
+		}{}
+		for evtID, specs := range typ.Events {
+			evt := struct {
+				name  string
+				specs schema.DataSchema
+			}{
+				name:  evtID.ToString(),
+				specs: specs,
+			}
+			ordered = append(ordered, evt)
+		}
+		sort.Sort(byName(ordered))
+		evts := make([]map[string]interface{}, len(typ.Events))
+		for i, evt := range ordered {
+			evtAvro := map[string]interface{}{
+				"type": "record",
+				"name": evt.name,
+				"fields": []map[string]interface{}{
+					map[string]interface{}{
+						"name": "data",
+						"type": evt.specs.(avroSchema).AvroNative(),
+					},
+				},
+			}
+			evts[i] = evtAvro
+		}
+
+		ent := map[string]interface{}{
+			"name": name,
+			"type": "record",
+			"fields": []map[string]interface{}{
+				map[string]interface{}{
+					"type": "bytes",
+					"name": "id",
+				},
+				map[string]interface{}{
+					"name": "event",
+					"type": evts,
+				},
+			},
+		}
+		ents = append(ents, ent)
+	}
+	sort.Sort(byNameMap(ents))
+	out, err := json.Marshal(ents)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("[AVRO JSON SCHEMA ENCODED]", string(out))
+	return out
+}
+
 type avroSchemaDecoder struct{}
 
 func (_ avroSchemaDecoder) Decode(b []byte) (dec schema.DataSchema, err error) {
@@ -102,6 +197,11 @@ func (_ avroSchemaDecoder) Decode(b []byte) (dec schema.DataSchema, err error) {
 	}
 	var descrMap = descr.(map[string]interface{})
 	dec, err = decodeNative(descrMap)
+	return
+}
+
+func (_ avroSchemaDecoder) DecodeNative(descrMap interface{}) (dec schema.DataSchema, err error) {
+	dec, err = decodeNative(descrMap.(map[string]interface{}))
 	return
 }
 

@@ -1,6 +1,9 @@
 package schema
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/cheng81/eventino/internal/eventino/item"
 )
 
@@ -17,6 +20,18 @@ type Schema struct {
 type EventSchemaID struct {
 	Name string
 	VSN  uint64
+}
+
+func (e EventSchemaID) ToString() string {
+	return fmt.Sprintf("%s_%d", e.Name, e.VSN)
+}
+
+func EventSchemaIDFromString(encoded string) EventSchemaID {
+	toks := strings.Split(encoded, "_")
+	var vsn uint64
+	fmt.Sscanf(toks[len(toks)-1], "%d", &vsn)
+	name := strings.Join(toks[0:len(toks)-1], "_")
+	return NewEventSchemaID(name, vsn)
 }
 
 func NewEventSchemaID(name string, vsn uint64) EventSchemaID {
@@ -67,6 +82,7 @@ type SchemaFactory interface {
 	SimpleType(DataType) DataSchema
 	NewRecord() RecordSchemaBuilder
 	Decoder() SchemaDecoder
+	EncodeNetwork(s *Schema) []byte
 	// TODO suport other complex types
 	// NewEnum(items ...string) DataSchema
 	// NewOptional(DataSchema) DataSchema
@@ -90,6 +106,7 @@ type DataEncoder interface {
 
 type DataSchema interface {
 	SchemaDecoder() SchemaDecoder
+	EncodeSchemaNative() interface{}
 	EncodeSchema() ([]byte, error)
 
 	Encoder() DataEncoder
@@ -99,6 +116,7 @@ type DataSchema interface {
 }
 
 type SchemaDecoder interface {
+	DecodeNative(interface{}) (DataSchema, error)
 	Decode([]byte) (DataSchema, error)
 }
 

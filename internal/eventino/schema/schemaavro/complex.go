@@ -86,6 +86,9 @@ func (r *avroRecordSchema) SchemaDecoder() schema.SchemaDecoder {
 func (r *avroRecordSchema) EncodeSchema() ([]byte, error) {
 	return avroSchemaCodec.BinaryFromNative(nil, r.AvroNativeMeta())
 }
+func (r *avroRecordSchema) EncodeSchemaNative() interface{} {
+	return r.AvroNativeMeta()
+}
 
 func (r *avroRecordSchema) Encoder() schema.DataEncoder {
 	return r

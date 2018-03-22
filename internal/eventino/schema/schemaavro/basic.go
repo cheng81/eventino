@@ -42,6 +42,10 @@ func (b *basicSchema) EncodeSchema() ([]byte, error) {
 	return avroSchemaCodec.BinaryFromNative(nil, b.AvroNativeMeta())
 }
 
+func (b *basicSchema) EncodeSchemaNative() interface{} {
+	return b.AvroNativeMeta()
+}
+
 func (b *basicSchema) Encoder() schema.DataEncoder {
 	return b
 }
