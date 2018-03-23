@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/linkedin/goavro"
+
 	"github.com/robertkrimen/otto"
 	"github.com/robertkrimen/otto/repl"
 
@@ -52,8 +54,62 @@ func main() {
 		vsn, err := eventino.Put(entName.(string), []byte(id.(string)), evtName.(string), evt)
 		if err != nil {
 			fmt.Println("ERROR>", err.Error())
+			return otto.UndefinedValue()
 		}
 		out, _ := otto.ToValue(vsn)
+		return out
+	})
+	vm.Set("getEntity", func(call otto.FunctionCall) otto.Value {
+		if len(call.ArgumentList) != 3 {
+			fmt.Println("getEntity expects 3 argument")
+			return otto.UndefinedValue()
+		}
+		entName, _ := call.ArgumentList[0].Export()
+		id, _ := call.ArgumentList[1].Export()
+		vsn, _ := call.ArgumentList[2].Export()
+
+		ent, err := eventino.GetEntity(entName.(string), []byte(id.(string)), uint64(vsn.(int64)))
+		if err != nil {
+			fmt.Println("ERROR>", err.Error())
+			return otto.UndefinedValue()
+		}
+
+		obj, _ := vm.Object("({})")
+		obj.Set("type", ent.Type.Name)
+		obj.Set("typeVsn", int64(ent.Type.VSN))
+		obj.Set("id", string(ent.ID))
+		obj.Set("vsn", int64(ent.VSN))
+		obj.Set("latest_vsn", int64(ent.LatestVSN))
+
+		ottoEvts := make([]otto.Value, len(ent.Events))
+		for i, nEvt := range ent.Events {
+			evt, _ := vm.Object("({})")
+			evt.Set("type", nEvt.Type.ToString())
+			evt.Set("ts", nEvt.Timestamp.UnixNano())
+			evt.Set("data", nEvt.Payload)
+			ottoEvts[i] = evt.Value()
+		}
+
+		obj.Set("events", ottoEvts)
+
+		// well, this _is_ quite insane..
+		// b, err := json.Marshal(ottoEntity)
+		// if err != nil {
+		// 	fmt.Println("cannot marshal json", err)
+		// 	return otto.UndefinedValue()
+		// }
+		// objStr := fmt.Sprintf("(%s)", string(b))
+		// obj, err := vm.Object(objStr)
+		// if err != nil {
+		// 	fmt.Println("cannot objectify marshalled json", objStr, err)
+		// 	return otto.UndefinedValue()
+		// }
+		// out, err := otto.ToValue(obj)
+		// if err != nil {
+		// 	fmt.Println("ERROR-ENCODE-ENTITY", err.Error())
+		// }
+		out := obj.Value()
+		// fmt.Printf("otto.entity %+v\n", out)
 		return out
 	})
 	vm.Set("createEntityType", func(call otto.FunctionCall) otto.Value {
@@ -115,6 +171,25 @@ func main() {
 		}
 		val, _ := vm.ToValue(res)
 		return val
+	})
+
+	vm.Set("codecValidate", func(call otto.FunctionCall) otto.Value {
+		scm, _ := call.Argument(0).Export()
+		itm, _ := call.Argument(1).Export()
+
+		b, _ := json.Marshal(scm)
+		codec, err := goavro.NewCodec(string(b))
+		if err != nil {
+			out, _ := otto.ToValue(fmt.Sprintf("cannot make codec: %s", err.Error()))
+			return out
+		}
+		_, err = codec.BinaryFromNative(nil, itm)
+		if err != nil {
+			out, _ := otto.ToValue(fmt.Sprintf("cannot encode: %s", err.Error()))
+			return out
+		}
+		out, _ := otto.ToValue("success!")
+		return out
 	})
 
 	repl.RunWithOptions(vm, repl.Options{Prompt: "eventino> ", Autocomplete: true})

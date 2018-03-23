@@ -55,9 +55,11 @@ func Get(txn *badger.Txn, entType schema.EntityType, ID []byte, vsn uint64) (ent
 		return
 	}
 	ent = Entity{
-		Type:   EntityType{entType.Name, entType.VSN},
-		ID:     ID,
-		Events: mappedEvts,
+		Type:      EntityType{entType.Name, entType.VSN},
+		ID:        ID,
+		LatestVSN: itm.LatestVsn,
+		VSN:       itm.LoadedVsn,
+		Events:    mappedEvts,
 	}
 	return
 }

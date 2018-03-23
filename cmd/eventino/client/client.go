@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
+
+	"github.com/cheng81/eventino/internal/eventino/entity"
 
 	"github.com/linkedin/goavro"
 
@@ -64,7 +67,7 @@ func (c *client) exec(cmd interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	var out interface{}
-	fmt.Println("exec.read reply")
+	// fmt.Println("exec.read reply")
 	b = make([]byte, 256*1024)
 	var wrote int
 	if wrote, err = c.conn.Read(b); err != nil {
@@ -76,7 +79,7 @@ func (c *client) exec(cmd interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	fmt.Println("exec, io ended", out, err)
+	// fmt.Println("exec, io ended", out, err)
 	return out.(map[string]interface{}), nil
 }
 
@@ -126,22 +129,12 @@ func (c *client) LoadSchema(vsn uint64) ([]byte, error) {
 	rsp1 := &command.LoadSchemaReply{}
 	if rsp1.Is(rsp) {
 		rsp1.Decode(rsp)
-		var additional []map[string]interface{}
-		err = json.Unmarshal(rsp1.Encoded, &additional)
+		var dataSchema map[string]interface{}
+		err = json.Unmarshal(rsp1.Encoded, &dataSchema)
 		if err != nil {
 			return nil, err
 		}
-		wrapper := map[string]interface{}{
-			"type": "record",
-			"name": "data",
-			"fields": []map[string]interface{}{
-				map[string]interface{}{
-					"name": "entity_event",
-					"type": additional,
-				},
-			},
-		}
-		c.codec, err = common.NetCodecWithSchema(wrapper)
+		c.codec, err = common.NetCodecWithSchema(dataSchema)
 		if err != nil {
 			return nil, err
 		}
@@ -189,6 +182,50 @@ func (c *client) Put(entName string, entID []byte, evtIDenc string, evt interfac
 		return uint64(vsn.(int64)), nil
 	}
 	return 0, decodeError(rsp)
+}
+
+func (c *client) GetEntity(entName string, entID []byte, vsn uint64) (entity.Entity, error) {
+	cmd := (&command.LoadEntity{Type: entName, ID: entID, VSN: vsn}).Encode()
+	rsp, err := c.exec(cmd)
+	out := entity.Entity{}
+	if err != nil {
+		return out, err
+	}
+	var ent map[string]interface{}
+	for _, v := range rsp["data"].(map[string]interface{})["entity_load"].(map[string]interface{}) {
+		ent = v.(map[string]interface{})
+		break
+	}
+
+	out.Type = entity.EntityType{Name: entName, VSN: uint64(ent["schema_vsn"].(int64))}
+	out.ID = ent["id"].([]byte)
+
+	out.VSN = uint64(ent["vsn"].(int64))
+	out.LatestVSN = uint64(ent["latest_vsn"].(int64))
+
+	evts := ent["events"].([]interface{})
+	out.Events = make([]entity.EntityEvent, len(evts))
+	for i, v := range evts {
+		var eName string
+		var eVal interface{}
+		var ts int64
+		for k, vv := range v.(map[string]interface{}) {
+			eName = k
+			ts = vv.(map[string]interface{})["ts"].(int64)
+			eVal = vv.(map[string]interface{})["data"]
+			break
+		}
+		entEvt := entity.EntityEvent{
+			Type:      entity.EventNameIDFromString(eName),
+			Timestamp: time.Unix(0, ts),
+			Payload:   eVal,
+		}
+		out.Events[i] = entEvt
+	}
+
+	// fmt.Printf("GOT ENTITY %+v\n", out)
+	return out, nil
+
 }
 
 func decodeError(m map[string]interface{}) error {

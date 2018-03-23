@@ -19,6 +19,7 @@ func init() {
 		new(command.LoadSchema).AvroSchema(),
 		new(command.LoadSchemaReply).AvroSchema(),
 		new(command.CreateEntity).AvroSchema(),
+		new(command.LoadEntity).AvroSchema(),
 		map[string]interface{}{"type": "boolean"},
 		map[string]interface{}{"type": "long"},
 	}

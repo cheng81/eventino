@@ -128,7 +128,8 @@ func (a byNameMap) Less(i, j int) bool {
 }
 
 func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
-	ents := []map[string]interface{}{}
+	entsEvt := []map[string]interface{}{}
+	entsLoad := []map[string]interface{}{}
 	for name, typ := range s.Entities {
 		if len(typ.Events) == 0 {
 			continue
@@ -149,6 +150,7 @@ func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
 		}
 		sort.Sort(byName(ordered))
 		evts := make([]map[string]interface{}, len(typ.Events))
+		evtsTs := make([]map[string]interface{}, len(typ.Events))
 		for i, evt := range ordered {
 			evtAvro := map[string]interface{}{
 				"type": "record",
@@ -161,6 +163,22 @@ func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
 				},
 			}
 			evts[i] = evtAvro
+
+			evtAvroTs := map[string]interface{}{
+				"type": "record",
+				"name": evt.name,
+				"fields": []map[string]interface{}{
+					map[string]interface{}{
+						"name": "ts",
+						"type": "long",
+					},
+					map[string]interface{}{
+						"name": "data",
+						"type": evt.specs.(avroSchema).AvroNative(),
+					},
+				},
+			}
+			evtsTs[i] = evtAvroTs
 		}
 
 		ent := map[string]interface{}{
@@ -177,10 +195,33 @@ func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
 				},
 			},
 		}
-		ents = append(ents, ent)
+		entsEvt = append(entsEvt, ent)
+
+		entLoad := map[string]interface{}{
+			"name": name, "type": "record",
+			"fields": []map[string]interface{}{
+				map[string]interface{}{"name": "id", "type": "bytes"},
+				map[string]interface{}{"name": "schema_vsn", "type": "long"},
+				map[string]interface{}{"name": "vsn", "type": "long"},
+				map[string]interface{}{"name": "latest_vsn", "type": "long"},
+				map[string]interface{}{"name": "events", "type": map[string]interface{}{"type": "array", "items": evtsTs}},
+			},
+		}
+		entsLoad = append(entsLoad, entLoad)
 	}
-	sort.Sort(byNameMap(ents))
-	out, err := json.Marshal(ents)
+	sort.Sort(byNameMap(entsEvt))
+
+	null := map[string]interface{}{"type": "null"}
+	entsEvt = append(entsEvt, null)
+	entsLoad = append(entsLoad, null)
+	wrapper := map[string]interface{}{
+		"name": "data", "type": "record",
+		"fields": []map[string]interface{}{
+			map[string]interface{}{"name": "entity_event", "type": entsEvt},
+			map[string]interface{}{"name": "entity_load", "type": entsLoad},
+		},
+	}
+	out, err := json.Marshal(wrapper)
 	if err != nil {
 		panic(err)
 	}

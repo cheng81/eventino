@@ -55,22 +55,12 @@ func (s *srv) handleCommand(cmd map[string]interface{}) (rsp []byte, err error) 
 			return wrapErr(err)
 		}
 		// switch network codec
-		var additional []map[string]interface{}
-		if err = json.Unmarshal(encoded, &additional); err != nil {
+		var dataSchema map[string]interface{}
+		if err = json.Unmarshal(encoded, &dataSchema); err != nil {
 			return wrapErr(err)
 		}
-		wrapper := map[string]interface{}{
-			"type": "record",
-			"name": "data",
-			"fields": []map[string]interface{}{
-				map[string]interface{}{
-					"name": "entity_event",
-					"type": additional,
-				},
-			},
-		}
 		var cdc *goavro.Codec
-		if cdc, err = common.NetCodecWithSchema(wrapper); err != nil {
+		if cdc, err = common.NetCodecWithSchema(dataSchema); err != nil {
 			return wrapErr(err)
 		}
 		s.codec = cdc
@@ -83,6 +73,41 @@ func (s *srv) handleCommand(cmd map[string]interface{}) (rsp []byte, err error) 
 			return wrapErr(err)
 		}
 		return s.codec.BinaryFromNative(nil, map[string]interface{}{"boolean": true})
+	} else if (&command.LoadEntity{}).Is(cmd) {
+		c := new(command.LoadEntity)
+		c.Decode(cmd)
+		ent, err := s.svc.GetEntity(c.Type, c.ID, c.VSN)
+		if err != nil {
+			return wrapErr(err)
+		}
+		evts := make([]map[string]interface{}, len(ent.Events))
+		for i, evt := range ent.Events {
+			evtTypeID := evt.Type.ToString()
+			evtNat := map[string]interface{}{
+				evtTypeID: map[string]interface{}{
+					"ts":   evt.Timestamp.UnixNano(),
+					"data": evt.Payload,
+				},
+			}
+			evts[i] = evtNat
+		}
+		entNative := map[string]interface{}{
+			"id":         ent.ID,
+			"schema_vsn": int64(ent.Type.VSN),
+			"vsn":        int64(ent.VSN),
+			"latest_vsn": int64(ent.LatestVSN),
+			"events":     evts,
+		}
+
+		reply := map[string]interface{}{"data": map[string]interface{}{
+			"entity_event": nil,
+			"entity_load": map[string]interface{}{
+				c.Type: entNative,
+			},
+		}}
+		//replyDbg, _ := json.Marshal(reply)
+		//fmt.Println("get.entity", string(replyDbg))
+		return s.codec.BinaryFromNative(nil, reply) //map[string]interface{}{"null": nil}
 	} else if command.IsData(cmd) {
 		// put
 		// get only key in map, to get the entity

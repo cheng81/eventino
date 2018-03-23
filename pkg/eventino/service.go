@@ -25,6 +25,7 @@ type Eventino interface {
 
 	NewEntity(entName string, entID []byte) error
 	Put(entName string, entID []byte, evtIDenc string, evt interface{}) (uint64, error)
+	GetEntity(entName string, entID []byte, vsn uint64) (entity.Entity, error)
 }
 
 func NewEventino(db *badger.DB, factory schema.SchemaFactory) Eventino {
@@ -111,4 +112,17 @@ func (e *eventino) Put(entName string, entID []byte, evtIDenc string, evt interf
 		return
 	})
 	return vsn, err
+}
+
+func (e *eventino) GetEntity(entName string, entID []byte, vsn uint64) (entity.Entity, error) {
+	typ, ok := e.scm.Entities[entName]
+	if !ok {
+		return entity.Entity{}, errors.New("entity-type-not-found")
+	}
+	var ent entity.Entity
+	err := e.db.View(func(txn *badger.Txn) (err error) {
+		ent, err = entity.Get(txn, typ, entID, vsn)
+		return
+	})
+	return ent, err
 }
