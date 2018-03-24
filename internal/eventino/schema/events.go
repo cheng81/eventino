@@ -167,6 +167,7 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 				return
 			}
 			et.Events[EventSchemaID{Name: e.Name, VSN: 0}] = evtSchema
+			scm.Entities[e.Entity] = et
 		case evtUpdated:
 			e := &entityEventTypeUpdated{}
 			if err = decode(evt.Payload, e); err != nil {
@@ -185,6 +186,7 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 				}
 			}
 			et.Events[NewEventSchemaID(e.Name, latestVsn+1)] = evtSchema
+			scm.Entities[e.Entity] = et
 		case evtDeleted:
 			e := &entityEventTypeDeleted{}
 			if err = decode(evt.Payload, e); err != nil {
@@ -197,6 +199,7 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 					delete(et.Events, k)
 				}
 			}
+			scm.Entities[e.Entity] = et
 		default:
 		}
 
