@@ -136,10 +136,11 @@ func (r *avroRecordSchema) AvroNativeMeta() map[string]interface{} {
 	}
 	return map[string]interface{}{
 		"Complex": map[string]interface{}{
-			"type": "RECORD",
-			"name": r.name,
-			"specs": map[string]interface{}{
-				"map": fields,
+			"type": map[string]interface{}{
+				"RECORD": map[string]interface{}{
+					"name":   r.name,
+					"fields": fields,
+				},
 			},
 		},
 	}

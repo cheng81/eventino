@@ -34,29 +34,22 @@ const avroSchemaSchema = `
 		 "name": "Simple",
 		 "symbols": ["INT", "LONG", "STRING", "BOOLEAN", "FLOAT", "DOUBLE", "NULL", "BYTES"]},
 		{"type": "record",
-		 "name": "Complex",
+ 		 "name": "Complex",
 		 "fields": [{
-			 "name": "type",
-			 "type": {
-				 "type": "enum",
-				 "name": "Type",
-				 "symbols": ["ARRAY", "UNION", "RECORD"]
-			 	}
-			 },
-			 {
-				 "name": "name",
-				 "type": "string"
-			 },
-			 {
-				"name": "specs",
-				"type": [
-					["Simple", "Complex", "Enum", "Ref"],
-					{"type": "array", "items": ["Simple", "Complex", "Enum", "Ref"]},
-					{"type": "map", "values": ["Simple", "Complex", "Enum", "Ref"]}
-				]
-				}
+			"name": "type",
+			"type": [
+				{"type": "record",
+					"name": "UNION",
+					"fields": [{"name": "types", "type": {"type": "array", "items": ["Simple", "Complex", "Enum", "Ref"]}}]},
+				{"type": "record",
+					"name": "ARRAY",
+					"fields": [{"name": "items", "type": ["Simple", "Complex", "Enum", "Ref"]}]},
+				{"type": "record",
+					"name": "RECORD",
+					"fields": [{"name": "name", "type": "string"},
+										 {"name": "fields", "type": {"type": "map", "values": ["Simple", "Complex", "Enum", "Ref"]}}]}
 			]
-		}
+		}]}
 	]
 }
 `
@@ -261,10 +254,18 @@ func decodeNative(descrMap map[string]interface{}) (dec schema.DataSchema, err e
 		}
 	}
 	if c, ok := descrMap["Complex"]; ok {
-		cMap := c.(map[string]interface{})
-		switch cMap["type"].(string) {
+		cMap := c.(map[string]interface{})["type"].(map[string]interface{})
+		var t string
+		var val interface{}
+		for k, v := range cMap {
+			t = k
+			val = v
+			break
+		}
+		fmt.Println("decode COMPLEX", t, val)
+		switch t {
 		case "RECORD":
-			dec = decodeRecord(cMap)
+			dec = decodeRecord(val.(map[string]interface{}))
 		default:
 			err = errors.New("NOT IMPLEMENTED")
 		}
@@ -276,7 +277,7 @@ func decodeNative(descrMap map[string]interface{}) (dec schema.DataSchema, err e
 }
 
 func decodeRecord(d map[string]interface{}) schema.DataSchema {
-	mFields := d["specs"].(map[string]interface{})["map"].(map[string]interface{})
+	mFields := d["fields"].(map[string]interface{})
 	fields := map[string]schema.DataSchema{}
 	fmt.Printf("decodeRecord-specs %+v\n", mFields)
 	for name, spec := range mFields {
