@@ -21,12 +21,12 @@ import (
 type Client interface {
 	AvroSchema() string
 	Eventino() eventino.Eventino
-	Start() error
+	Start(addr string, port int) error
 	Stop() error
 }
 
-func NewClient(addr string, port int) Client {
-	return &client{addr: addr, port: port, codec: common.NetCodec}
+func NewClient() Client {
+	return &client{codec: common.NetCodec}
 }
 
 type client struct {
@@ -45,7 +45,9 @@ func (c *client) Eventino() eventino.Eventino {
 	return c
 }
 
-func (c *client) Start() (err error) {
+func (c *client) Start(addr string, port int) (err error) {
+	c.addr = addr
+	c.port = port
 	c.conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", c.addr, c.port))
 	return
 }

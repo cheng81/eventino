@@ -13,12 +13,14 @@ import (
 	"github.com/cheng81/eventino/pkg/eventino/common"
 )
 
-func main() {
-	var port int
-	fmt.Sscanf(common.Getenv("EVENTINO_PORT", "7890"), "%d", &port)
-	addr := common.Getenv("EVENTINO_ADDR", "localhost")
+var def_port int
+var def_addr string
 
-	client := client.NewClient(addr, port)
+func main() {
+	fmt.Sscanf(common.Getenv("EVENTINO_PORT", "7890"), "%d", &def_port)
+	def_addr = common.Getenv("EVENTINO_ADDR", "localhost")
+
+	client := client.NewClient()
 	eventino := client.Eventino()
 
 	// err := client.Start()
@@ -27,8 +29,26 @@ func main() {
 	// }
 
 	vm := otto.New()
-	vm.Set("connect", client.Start)
 	vm.Set("disconnect", client.Stop)
+	vm.Set("connect", func(call otto.FunctionCall) otto.Value {
+		var a string
+		var p int
+		if len(call.ArgumentList) == 2 {
+			t, _ := call.Argument(0).Export()
+			a = t.(string)
+			t, _ = call.Argument(1).Export()
+			p = int(t.(int64))
+		} else {
+			a = def_addr
+			p = def_port
+		}
+		err := client.Start(a, p)
+		if err != nil {
+			fmt.Println("CONNECT FAILED", err)
+			return otto.FalseValue()
+		}
+		return otto.TrueValue()
+	})
 	vm.Set("newEntity", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) != 2 {
 			fmt.Println("newEntity expects 2 argument")
