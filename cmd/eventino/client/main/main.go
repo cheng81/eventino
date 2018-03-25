@@ -158,7 +158,19 @@ func main() {
 		}
 		out, _ := otto.ToValue(loadedVsn)
 		return out
-
+	})
+	vm.Set("latestSchemaVSN", func(call otto.FunctionCall) otto.Value {
+		vsn, err := eventino.SchemaVSN()
+		if err != nil {
+			fmt.Println("ERROR>", err.Error())
+			return otto.UndefinedValue()
+		}
+		out, err := otto.ToValue(vsn)
+		if err != nil {
+			fmt.Println("ERROR>(2)", err.Error())
+			return otto.UndefinedValue()
+		}
+		return out
 	})
 	vm.Set("schema", func(call otto.FunctionCall) otto.Value {
 		schemaStr := client.AvroSchema()

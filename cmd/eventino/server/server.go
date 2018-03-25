@@ -109,6 +109,13 @@ func (s *srv) handleCommand(cmd map[string]interface{}) (rsp []byte, err error) 
 		//replyDbg, _ := json.Marshal(reply)
 		//fmt.Println("get.entity", string(replyDbg))
 		return s.codec.BinaryFromNative(nil, reply) //map[string]interface{}{"null": nil}
+	} else if command.IsCommand("string", cmd) && cmd["string"].(string) == "schema_vsn" {
+		// load latest schema vsn
+		v, err := s.svc.SchemaVSN()
+		if err != nil {
+			return wrapErr(err)
+		}
+		return s.codec.BinaryFromNative(nil, map[string]interface{}{"long": int64(v)})
 	} else if command.IsData(cmd) {
 		// put
 		// get only key in map, to get the entity

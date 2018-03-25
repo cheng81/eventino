@@ -228,6 +228,18 @@ func (c *client) GetEntity(entName string, entID []byte, vsn uint64) (entity.Ent
 
 }
 
+func (c *client) SchemaVSN() (uint64, error) {
+	cmd := map[string]interface{}{"string": "schema_vsn"}
+	rsp, err := c.exec(cmd)
+	if err != nil {
+		return 0, err
+	}
+	if vsn, ok := rsp["long"]; ok {
+		return uint64(vsn.(int64)), nil
+	}
+	return 0, decodeError(rsp)
+}
+
 func decodeError(m map[string]interface{}) error {
 	errorMsg := &command.ErrorResponse{}
 	errorMsg.Decode(m)

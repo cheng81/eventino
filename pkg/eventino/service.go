@@ -13,6 +13,7 @@ import (
 
 type Eventino interface {
 	LoadSchema(vsn uint64) (uint64, []byte, error)
+	SchemaVSN() (uint64, error)
 
 	CreateEntityType(name string) (uint64, error)
 	// DeleteEntityType(name string) (uint64, error)
@@ -36,6 +37,16 @@ type eventino struct {
 	db      *badger.DB
 	scm     *schema.Schema
 	factory schema.SchemaFactory
+}
+
+func (e *eventino) SchemaVSN() (uint64, error) {
+	dec := e.factory.Decoder()
+	var latestVSN uint64
+	err := e.db.View(func(txn *badger.Txn) (err error) {
+		latestVSN, err = schema.SchemaVSN(txn, dec)
+		return
+	})
+	return latestVSN, err
 }
 
 func (e *eventino) LoadSchema(vsn uint64) (loadedVsn uint64, encoded []byte, err error) {
