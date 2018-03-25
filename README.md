@@ -1,6 +1,55 @@
 # Eventino #
 
+`Eventino`, at its core, is an event store for domain events.
+The grand idea is to make _data distribution in a microservices settings great again!_.
+
+Imagine a system where _entities_ micro-services are backed by eventino servers:
+easy enough, once an entity is created, updated or deleted you send an event to `eventino`.
+Other microservices are obviously interested in the state of our entities, but instead
+of asking to `eventino`, they can use the tools which works best for the case at hand.
+
+I want a place where entities can evolve their schema without fear of breaking other parts
+of the system.
+A place where there is no need for a central DB that holds everything - there _could_ be
+a DB that holds everything, but not the "source of truth", just a sink for all entities states.
+And where each part is able to determine which data storage system to use that fits the
+bill for its use case, and still be able to get all the entities data.
+
+How? `eventino`, ultimately, will provide the following facilities:
+
+ - store domain events, in a evolve-schema-friendly settings
+  - which means, add or modify entities and events, and let the clients to update at their pace
+ - a single eventino instance can be replicated, so to support query-heavy settings
+ - "views"
+  - an entity is a collection of events
+  - events can be folded into a structure, which we call "view"
+  - "views" can be persisted, and automatically updated on new events
+  - "views", through plug-ins, will be able to be persisted on different storages
+   - e.g. `MySQL`, `redis`, etc.
+ - complex views, involving different entity types (and eventino servers)
+
+What eventino is not:
+
+ - a `SQL` compliant db
+  - you can store events into entities, and fetch by entity id. That's it.
+ - a write-heavy data store
+  - I need a totally ordered log (for a single eventino instance)
+  - cannot have distributed writers (or, it's more difficult to do so)
+  - _but_ you can (and *should*) have multiple eventino instances for different entities
+
+## Where are we ##
+
+At present time (2018-03-25) some lower level stuff is basically done,
+I made a crude client/server interface which should be enough to validate
+the design, perhaps involve other people in the community to jump and help.
+There is _tons_ of work to do, so far basically only the _schema_ is (partially) 
+implemented and _entitites_ can be created, updated with events and fetched, 
+but views, replicas are still missing.
+Tests are also lacking - there are for each layer, but the coverage is lacking.
+
 ## Design ##
+
+TODO :D
 
 ## Layers ##
 
@@ -155,12 +204,12 @@ note: I found some difficulties with avro, though. At first, I tried a custom -g
 ### Entities ###
 
 - [x] Basic create
-- [ ] Create - add index
+- [ ] Create - add index?
 - [x] Add event
 - [x] Get entity
 - [x] Delete entity
 - [x] View (disposable)
-- [ ] Persistent view
+- [ ] Persistent view?
 
 ### Script ###
 
@@ -172,8 +221,8 @@ note: I found some difficulties with avro, though. At first, I tried a custom -g
 TBD once the underlying layers are somewhat stable
 
 - [ ] basic replica
-- [ ] RPC server over TCP (avro, schema, entity)
-- [ ] RPC client over TCP (avro, schema, entity)
+- [x] basic RPC server over TCP (avro, schema, entity)
+- [x] basic RPC client over TCP (avro, schema, entity)
 - [ ] Subscriptions, single entities
 - [ ] Subscriptions, multiple entities
 - [ ] Subscriptions, matching events
