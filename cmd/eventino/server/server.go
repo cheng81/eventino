@@ -50,8 +50,9 @@ func (s *srv) handleCommand(cmd map[string]interface{}) (rsp []byte, err error) 
 	} else if (&command.LoadSchema{}).Is(cmd) {
 		c := new(command.LoadSchema)
 		c.Decode(cmd)
+		var loadedVsn uint64
 		var encoded []byte
-		if encoded, err = s.svc.LoadSchema(c.VSN); err != nil {
+		if loadedVsn, encoded, err = s.svc.LoadSchema(c.VSN); err != nil {
 			return wrapErr(err)
 		}
 		// switch network codec
@@ -65,7 +66,7 @@ func (s *srv) handleCommand(cmd map[string]interface{}) (rsp []byte, err error) 
 		}
 		s.codec = cdc
 		fmt.Println("loadSchema, new codec", s.codec.Schema())
-		return s.codec.BinaryFromNative(nil, (&command.LoadSchemaReply{VSN: c.VSN, Encoded: encoded}).Encode())
+		return s.codec.BinaryFromNative(nil, (&command.LoadSchemaReply{VSN: loadedVsn, Encoded: encoded}).Encode())
 	} else if (&command.CreateEntity{}).Is(cmd) {
 		c := new(command.CreateEntity)
 		c.Decode(cmd)

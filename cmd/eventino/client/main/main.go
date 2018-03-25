@@ -151,14 +151,12 @@ func main() {
 		}
 
 		vsn, _ := call.ArgumentList[0].Export()
-		jsonEnc, err := eventino.LoadSchema(uint64(vsn.(int64)))
+		loadedVsn, _, err := eventino.LoadSchema(uint64(vsn.(int64)))
 		if err != nil {
 			fmt.Println("ERROR>", err.Error())
 			return otto.UndefinedValue()
 		}
-		var schemaNative interface{}
-		json.Unmarshal(jsonEnc, &schemaNative)
-		out, _ := otto.ToValue(schemaNative)
+		out, _ := otto.ToValue(loadedVsn)
 		return out
 
 	})

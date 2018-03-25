@@ -12,7 +12,7 @@ import (
 )
 
 type Eventino interface {
-	LoadSchema(vsn uint64) ([]byte, error)
+	LoadSchema(vsn uint64) (uint64, []byte, error)
 
 	CreateEntityType(name string) (uint64, error)
 	// DeleteEntityType(name string) (uint64, error)
@@ -38,7 +38,7 @@ type eventino struct {
 	factory schema.SchemaFactory
 }
 
-func (e *eventino) LoadSchema(vsn uint64) (encoded []byte, err error) {
+func (e *eventino) LoadSchema(vsn uint64) (loadedVsn uint64, encoded []byte, err error) {
 	dec := e.factory.Decoder()
 	// dptr := &descr
 	err = e.db.View(func(txn *badger.Txn) (err error) {
@@ -52,6 +52,7 @@ func (e *eventino) LoadSchema(vsn uint64) (encoded []byte, err error) {
 	if err != nil {
 		return
 	}
+	loadedVsn = e.scm.VSN
 	encoded = e.factory.EncodeNetwork(e.scm)
 	return
 }

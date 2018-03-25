@@ -119,12 +119,12 @@ func (c *client) CreateEventType(entName, name string, specs interface{}) (uint6
 	return 0, decodeError(rsp)
 }
 
-func (c *client) LoadSchema(vsn uint64) ([]byte, error) {
+func (c *client) LoadSchema(vsn uint64) (uint64, []byte, error) {
 	cmd := (&command.LoadSchema{VSN: vsn}).Encode()
 	rsp, err := c.exec(cmd)
 	if err != nil {
 		fmt.Println("cannot load schema", err)
-		return nil, err
+		return 0, nil, err
 	}
 	rsp1 := &command.LoadSchemaReply{}
 	if rsp1.Is(rsp) {
@@ -132,15 +132,15 @@ func (c *client) LoadSchema(vsn uint64) ([]byte, error) {
 		var dataSchema map[string]interface{}
 		err = json.Unmarshal(rsp1.Encoded, &dataSchema)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		c.codec, err = common.NetCodecWithSchema(dataSchema)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
-		return rsp1.Encoded, nil
+		return rsp1.VSN, rsp1.Encoded, nil
 	}
-	return nil, decodeError(rsp)
+	return 0, nil, decodeError(rsp)
 }
 
 func (c *client) NewEntity(entName string, ID []byte) error {
