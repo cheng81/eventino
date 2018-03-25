@@ -9,8 +9,8 @@ import (
 	"github.com/robertkrimen/otto"
 	"github.com/robertkrimen/otto/repl"
 
-	"github.com/cheng81/eventino/cmd/eventino/client"
-	"github.com/cheng81/eventino/cmd/eventino/common"
+	"github.com/cheng81/eventino/pkg/eventino/client"
+	"github.com/cheng81/eventino/pkg/eventino/common"
 )
 
 func main() {
@@ -92,24 +92,7 @@ func main() {
 
 		obj.Set("events", ottoEvts)
 
-		// well, this _is_ quite insane..
-		// b, err := json.Marshal(ottoEntity)
-		// if err != nil {
-		// 	fmt.Println("cannot marshal json", err)
-		// 	return otto.UndefinedValue()
-		// }
-		// objStr := fmt.Sprintf("(%s)", string(b))
-		// obj, err := vm.Object(objStr)
-		// if err != nil {
-		// 	fmt.Println("cannot objectify marshalled json", objStr, err)
-		// 	return otto.UndefinedValue()
-		// }
-		// out, err := otto.ToValue(obj)
-		// if err != nil {
-		// 	fmt.Println("ERROR-ENCODE-ENTITY", err.Error())
-		// }
 		out := obj.Value()
-		// fmt.Printf("otto.entity %+v\n", out)
 		return out
 	})
 	vm.Set("createEntityType", func(call otto.FunctionCall) otto.Value {
@@ -126,7 +109,6 @@ func main() {
 		out, _ := otto.ToValue(vsn)
 		return out
 	})
-	// vm.Set("createEntityType", eventino.CreateEntityType)
 	vm.Set("createEventType", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) != 3 {
 			fmt.Println("createEventType expects 3 arguments")
@@ -143,7 +125,6 @@ func main() {
 		out, _ := otto.ToValue(vsn)
 		return out
 	})
-	// vm.Set("createEventType", eventino.CreateEventType)
 	vm.Set("loadSchema", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) != 1 {
 			fmt.Println("createEventType expects 1 argument")

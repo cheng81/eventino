@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cheng81/eventino/cmd/eventino/common"
 	"github.com/cheng81/eventino/cmd/eventino/server"
+	"github.com/cheng81/eventino/pkg/eventino/common"
 	"github.com/dgraph-io/badger"
 )
 

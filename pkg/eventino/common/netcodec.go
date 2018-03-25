@@ -3,7 +3,7 @@ package common
 import (
 	"encoding/json"
 
-	"github.com/cheng81/eventino/cmd/eventino/common/command"
+	"github.com/cheng81/eventino/pkg/eventino/common/command"
 	"github.com/linkedin/goavro"
 )
 

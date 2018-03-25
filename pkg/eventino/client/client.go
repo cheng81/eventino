@@ -11,9 +11,9 @@ import (
 
 	"github.com/linkedin/goavro"
 
-	"github.com/cheng81/eventino/cmd/eventino/common/command"
+	"github.com/cheng81/eventino/pkg/eventino/common/command"
 
-	"github.com/cheng81/eventino/cmd/eventino/common"
+	"github.com/cheng81/eventino/pkg/eventino/common"
 
 	"github.com/cheng81/eventino/pkg/eventino"
 )

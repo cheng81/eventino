@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cheng81/eventino/cmd/eventino/common/command"
+	"github.com/cheng81/eventino/pkg/eventino/common/command"
 	"github.com/linkedin/goavro"
 
-	"github.com/cheng81/eventino/cmd/eventino/common"
 	"github.com/cheng81/eventino/internal/eventino/schema/schemaavro"
 	"github.com/cheng81/eventino/pkg/eventino"
+	"github.com/cheng81/eventino/pkg/eventino/common"
 	"github.com/dgraph-io/badger"
 )
 
