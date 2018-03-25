@@ -25,7 +25,7 @@ func GetSchema(txn *badger.Txn, vsn uint64, dec SchemaDecoder) (Schema, error) {
 	if err := EnsureSchema(txn); err != nil {
 		return Schema{}, err
 	}
-	return getSchema(txn, dec, func(s Schema) bool { return s.VSN > vsn })
+	return getSchema(txn, dec, func(s Schema) bool { return s.VSN >= vsn })
 }
 
 // SchemaVSN returns the latest version of the schema

@@ -141,6 +141,7 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 		scm.VSN++
 		fmt.Println("schemaFolder - kind right", scm.VSN, scm)
 		stop = stopper(scm)
+		fmt.Println("schemaFolder - is stop?", stop)
 
 		switch string(evt.Type) {
 		case entCreated:
@@ -204,6 +205,6 @@ func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewF
 		}
 
 		fmt.Println("schemaFolder - out ", scm)
-		return scm, false, nil
+		return scm, stop, nil
 	}
 }
