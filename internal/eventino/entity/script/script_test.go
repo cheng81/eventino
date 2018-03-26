@@ -80,11 +80,10 @@ func TestOtto2(t *testing.T) {
 	src := `
 	function foo(a,b) {return a+b;}
 	function bar(a,b) {return a*b;}
-	var o = {
+	({
 		foo: foo,
 		bar: bar
-	};
-	o;
+	});
 	`
 
 	vm := otto.New()
@@ -172,7 +171,7 @@ func TestOtto(t *testing.T) {
 }
 
 const testObj string = `
-var handlers = {
+({
 	Created_0: function(acc, evt, vsn) {
 		acc['name'] = evt['Name'];
 		acc['paying'] = evt['Paying'];
@@ -190,15 +189,14 @@ var handlers = {
 		acc['latest'] = vsn;
 		return acc;
 	},
-};
-handlers;
+})
 `
 
 const testFun string = `
 function maybeUpdate(acc, key, val) {
 	acc[key] = val || acc[key]
 }
-function handle(eventName, eventVsn, evt, acc, vsn) {
+(function handle(eventName, eventVsn, evt, acc, vsn) {
 	if (eventVsn > 0) {
 		console.log("oh oh oh, too new", eventName, eventVsn);
 		return acc;
@@ -209,8 +207,7 @@ function handle(eventName, eventVsn, evt, acc, vsn) {
 	maybeUpdate(acc, 'paying', evt['Paying']);
 	maybeUpdate(acc, 'email', evt['Email']);
 	return acc;
-}
-handle;
+})
 `
 
 func TestScriptParse(t *testing.T) {
