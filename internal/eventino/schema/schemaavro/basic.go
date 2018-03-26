@@ -24,6 +24,12 @@ func (b *basicSchema) AvroNativeMeta() map[string]interface{} {
 		ts = "BOOLEAN"
 	case schema.String:
 		ts = "STRING"
+	case schema.Int64:
+		ts = "LONG"
+	case schema.Float64:
+		ts = "DOUBLE"
+	case schema.Bytes:
+		ts = "BYTES"
 	}
 	return map[string]interface{}{
 		"Simple": ts,
@@ -62,6 +68,12 @@ func (b *basicSchema) Valid(v interface{}) (out bool) {
 		_, out = v.(bool)
 	case schema.String:
 		_, out = v.(string)
+	case schema.Int64:
+		_, out = v.(int64)
+	case schema.Float64:
+		_, out = v.(float64)
+	case schema.Bytes:
+		_, out = v.([]byte)
 	}
 	return
 }
@@ -90,9 +102,15 @@ func newBasicSchema(t schema.DataType, schemaSpecs string) *basicSchema {
 var nilSchema *basicSchema
 var boolSchema *basicSchema
 var stringSchema *basicSchema
+var longSchema *basicSchema
+var doublueSchema *basicSchema
+var bytesSchema *basicSchema
 
 func init() {
 	nilSchema = newBasicSchema(schema.Null, `{"type":"null"}`)
 	boolSchema = newBasicSchema(schema.Bool, `{"type":"boolean"}`)
 	stringSchema = newBasicSchema(schema.String, `{"type":"string"}`)
+	longSchema = newBasicSchema(schema.String, `{"type":"long"}`)
+	doublueSchema = newBasicSchema(schema.String, `{"type":"double"}`)
+	bytesSchema = newBasicSchema(schema.String, `{"type":"bytes"}`)
 }

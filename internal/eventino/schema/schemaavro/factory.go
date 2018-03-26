@@ -82,6 +82,12 @@ func (_ avroSchemaFactory) SimpleType(t schema.DataType) schema.DataSchema {
 		return boolSchema
 	case schema.String:
 		return stringSchema
+	case schema.Int64:
+		return longSchema
+	case schema.Float64:
+		return doublueSchema
+	case schema.Bytes:
+		return bytesSchema
 	}
 	return nil
 
