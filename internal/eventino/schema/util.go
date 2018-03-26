@@ -8,8 +8,8 @@ import (
 	"github.com/cheng81/eventino/internal/eventino/item"
 )
 
-const eventIndexKind byte = 8
-const eventIndexType string = "NEWENT"
+// const eventIndexKind byte = 8
+// const eventIndexType string = "NEWENT"
 
 var schemaID item.ItemID
 
