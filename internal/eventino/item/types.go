@@ -3,6 +3,7 @@ package item
 import (
 	"encoding/binary"
 
+	"github.com/cheng81/eventino/internal/eventino"
 	"github.com/cheng81/eventino/internal/eventino/log"
 )
 
@@ -95,12 +96,12 @@ func (id ItemID) encodeInto(b []byte) {
 }
 func (id ItemID) BaseKey() []byte {
 	var out = make([]byte, 3+len(id.ID))
-	out[0] = itemItemPfx
+	out[0] = eventino.PfxItem
 	id.encodeInto(out[1:])
 	return out
 }
 func (id ItemID) baseKeyInto(b []byte) {
-	b[0] = itemItemPfx
+	b[0] = eventino.PfxItem
 	id.encodeInto(b[1:])
 }
 func (id ItemID) keyOf(b byte) []byte {
@@ -140,13 +141,13 @@ func (id ItemID) KeyView(name []byte) []byte {
 }
 func (id ItemID) AliasKey() []byte {
 	var out = make([]byte, 3+len(id.ID))
-	out[0] = aliasItemPfx
+	out[0] = eventino.PfxAlias
 	id.encodeInto(out[1:])
 	return out
 }
 func (id ItemID) VSNFromEventKey(k []byte) (uint64, error) {
 	if len(k) != 12+len(id.ID) ||
-		k[0] != itemItemPfx ||
+		k[0] != eventino.PfxItem ||
 		k[len(id.ID)+3] != itemKeyEvents {
 		return 0, KeyError
 	}

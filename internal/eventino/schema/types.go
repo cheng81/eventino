@@ -176,10 +176,6 @@ func (dt DataType) IsComplex() bool {
 	return false
 }
 
-const (
-	EventKindSchema byte = 4
-)
-
 // TODO: make complex types namespace
 // so that a record is defined there,
 // and an entity event data schema

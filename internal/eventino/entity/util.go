@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/cheng81/eventino/internal/eventino"
 	"github.com/cheng81/eventino/internal/eventino/item"
 	"github.com/cheng81/eventino/internal/eventino/schema"
 )
@@ -16,7 +17,7 @@ func entityEvt(typ schema.EntityType, evtID schema.EventSchemaID, payload interf
 	var scm schema.DataSchema
 	var ok bool
 
-	out = item.Event{Kind: EventKindEntity}
+	out = item.Event{Kind: eventino.EventKindEntity}
 
 	if scm, ok = typ.Events[evtID]; !ok {
 		err = errors.New("Event not found in Entity schema")
@@ -69,7 +70,7 @@ func decode(b []byte, v interface{}) error {
 func mapEvents(typ schema.EntityType, evts []item.Event) ([]EntityEvent, error) {
 	out := make([]EntityEvent, 0, len(evts))
 	for _, evt := range evts {
-		if evt.Kind == EventKindEntity {
+		if evt.Kind == eventino.EventKindEntity {
 			entEvt, err := mapEvent(typ, evt)
 			if err == nil {
 				out = append(out, entEvt)

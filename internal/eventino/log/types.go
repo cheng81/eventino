@@ -2,6 +2,8 @@ package log
 
 import (
 	"encoding/binary"
+
+	"github.com/cheng81/eventino/internal/eventino"
 )
 
 // EventID represents an log item
@@ -27,7 +29,7 @@ type EventMatcher func(EventID, Event) bool
 // Encode returns the []byte representation to be used as badger key
 func (eid EventID) Encode() (out []byte) {
 	out = make([]byte, 13)
-	out[0] = logItemPfx
+	out[0] = eventino.PfxLog
 	binary.BigEndian.PutUint16(out[1:3], uint16(eid.Prefix))
 	binary.BigEndian.PutUint64(out[3:11], eid.Timestamp)
 	binary.BigEndian.PutUint16(out[11:13], eid.Index)
@@ -37,7 +39,7 @@ func (eid EventID) Encode() (out []byte) {
 // DecodeEventID reads the bytes and fills the *EventID.
 // Might return NoLogItemIDError
 func DecodeEventID(b []byte, eid *EventID) error {
-	if b[0] != logItemPfx {
+	if b[0] != eventino.PfxLog {
 		return NoLogEventIDError
 	}
 	eid.Prefix = uint8(binary.BigEndian.Uint16(b[1:3]))

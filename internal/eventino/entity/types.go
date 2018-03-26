@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-const (
-	EventKindEntity = 8
-)
-
 var EventVSNNotFound error
 
 func init() {

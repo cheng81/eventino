@@ -7,7 +7,7 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-const logItemPfx byte = 101 // byte('e')
+// const logItemPfx byte = 101 // byte('e')
 
 // NoLogEventIDError is returned when trying to decode
 // a []byte as EventID that does not encode an EventID

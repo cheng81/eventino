@@ -15,8 +15,6 @@ const (
 )
 
 const (
-	itemItemPfx    byte = 105 // byte('i')
-	aliasItemPfx   byte = 97  // a
 	itemKeyVSN     byte = 118 // v
 	itemKeyAliases byte = 97  // a
 	itemKeyEvents  byte = 101 // e

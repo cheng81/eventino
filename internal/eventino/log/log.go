@@ -3,6 +3,7 @@ package log
 import (
 	"time"
 
+	"github.com/cheng81/eventino/internal/eventino"
 	"github.com/dgraph-io/badger"
 )
 
@@ -62,7 +63,7 @@ func Range(txn *badger.Txn, from EventID, to EventID, max int) ([]Event, *EventI
 	pfx := from.Encode()
 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
 	defer iter.Close()
-	for iter.Seek(pfx); iter.ValidForPrefix([]byte{logItemPfx}); iter.Next() {
+	for iter.Seek(pfx); iter.ValidForPrefix([]byte{eventino.PfxLog}); iter.Next() {
 		item := iter.Item()
 		eid := EventID{}
 		err = DecodeEventID(item.Key(), &eid)
@@ -99,7 +100,7 @@ func RangeMatch(txn *badger.Txn, from EventID, to EventID, max int, m EventMatch
 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
 	added := 0
 	defer iter.Close()
-	for iter.Seek(pfx); iter.ValidForPrefix([]byte{logItemPfx}); iter.Next() {
+	for iter.Seek(pfx); iter.ValidForPrefix([]byte{eventino.PfxLog}); iter.Next() {
 		item := iter.Item()
 		eid := EventID{}
 		err = DecodeEventID(item.Key(), &eid)

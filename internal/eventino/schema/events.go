@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 
+	"github.com/cheng81/eventino/internal/eventino"
 	"github.com/cheng81/eventino/internal/eventino/item"
 	"github.com/dgraph-io/badger"
 )
@@ -20,7 +21,7 @@ func newEntityCreated(name string) (out item.Event, err error) {
 	if b, err = encode(entityTypeCreated{Name: name}); err != nil {
 		return
 	}
-	out = item.NewEvent(EventKindSchema, []byte(entCreated), b)
+	out = item.NewEvent(eventino.EventKindSchema, []byte(entCreated), b)
 	return
 }
 
@@ -29,7 +30,7 @@ func newEntityDeleted(name string) (out item.Event, err error) {
 	if b, err = encode(entityTypeDeleted{Name: name}); err != nil {
 		return
 	}
-	out = item.NewEvent(EventKindSchema, []byte(entDeleted), b)
+	out = item.NewEvent(eventino.EventKindSchema, []byte(entDeleted), b)
 	return
 }
 
@@ -43,7 +44,7 @@ func newEventTypeCreated(entName, name string, schema DataSchema) (out item.Even
 	if b, err = encode(entityEventTypeCreated{Entity: entName, Name: name, SchemaBin: schemaBin}); err != nil {
 		return
 	}
-	out = item.NewEvent(EventKindSchema, []byte(evtCreated), b)
+	out = item.NewEvent(eventino.EventKindSchema, []byte(evtCreated), b)
 	return
 }
 
@@ -57,7 +58,7 @@ func newEventTypeUpdated(entName, name string, schema DataSchema) (out item.Even
 	if b, err = encode(entityEventTypeUpdated{Entity: entName, Name: name, SchemaBin: schemaBin}); err != nil {
 		return
 	}
-	out = item.NewEvent(EventKindSchema, []byte(evtUpdated), b)
+	out = item.NewEvent(eventino.EventKindSchema, []byte(evtUpdated), b)
 	return
 }
 
@@ -66,7 +67,7 @@ func newEventTypeDeleted(entName, name string) (out item.Event, err error) {
 	if b, err = encode(entityEventTypeDeleted{Entity: entName, Name: name}); err != nil {
 		return
 	}
-	out = item.NewEvent(EventKindSchema, []byte(evtDeleted), b)
+	out = item.NewEvent(eventino.EventKindSchema, []byte(evtDeleted), b)
 	return
 }
 
@@ -133,8 +134,8 @@ func getSchema(txn *badger.Txn, schemaDec SchemaDecoder, stopper func(Schema) bo
 func schemaFolder(stopper func(Schema) bool, schemaDec SchemaDecoder) item.ViewFoldFunc {
 	return func(acc interface{}, evt item.Event, _ uint64) (out interface{}, stop bool, err error) {
 		// skip non-schema events (e.g. created)
-		fmt.Println("schemaFolder", evt.Kind, EventKindSchema, acc.(Schema).VSN)
-		if evt.Kind != EventKindSchema {
+		fmt.Println("schemaFolder", evt.Kind, eventino.EventKindSchema, acc.(Schema).VSN)
+		if evt.Kind != eventino.EventKindSchema {
 			return acc, false, nil
 		}
 		scm := acc.(Schema)

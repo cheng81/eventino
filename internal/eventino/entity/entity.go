@@ -3,6 +3,7 @@ package entity
 import (
 	"fmt"
 
+	"github.com/cheng81/eventino/internal/eventino"
 	"github.com/cheng81/eventino/internal/eventino/item"
 	"github.com/cheng81/eventino/internal/eventino/schema"
 	"github.com/dgraph-io/badger"
@@ -77,7 +78,7 @@ func View(txn *badger.Txn,
 	initial interface{}) (interface{}, uint64, error) {
 	itemFold := func(acc interface{}, evt item.Event, vsn uint64) (interface{}, bool, error) {
 		fmt.Println("entity.View", acc, evt)
-		if evt.Kind == EventKindEntity {
+		if evt.Kind == eventino.EventKindEntity {
 			entEvt, err := mapEvent(entType, evt)
 			if err != nil && err != EventVSNNotFound {
 				return nil, true, err
