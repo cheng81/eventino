@@ -22,17 +22,11 @@ func EnsureSchema(txn *badger.Txn) (err error) {
 
 // GetSchema returns the schema at the given version
 func GetSchema(txn *badger.Txn, vsn uint64, dec SchemaDecoder) (Schema, error) {
-	if err := EnsureSchema(txn); err != nil {
-		return Schema{}, err
-	}
 	return getSchema(txn, dec, func(s Schema) bool { return s.VSN >= vsn })
 }
 
 // SchemaVSN returns the latest version of the schema
 func SchemaVSN(txn *badger.Txn, dec SchemaDecoder) (vsn uint64, err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
 	var scm Schema
 	if scm, err = getSchema(txn, dec, func(_ Schema) bool { return false }); err != nil {
 		return
@@ -44,10 +38,6 @@ func SchemaVSN(txn *badger.Txn, dec SchemaDecoder) (vsn uint64, err error) {
 
 // CreateEntityType initializes a new entity type
 func CreateEntityType(txn *badger.Txn, dec SchemaDecoder, name string) (err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
-
 	if _, err = GetEntityType(txn, dec, name, 0); err != EntityTypeNotFound {
 		return EntityExists
 	}
@@ -76,10 +66,6 @@ func ClearEntities(txn *badger.Txn, name string, from *item.ItemID, max int) (er
 
 // DeleteEntityType removes an entity type from the schema
 func DeleteEntityType(txn *badger.Txn, name string, dec SchemaDecoder) (err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
-
 	// grab latest schema version
 	var schema Schema
 	// var typ EntityType
@@ -129,9 +115,6 @@ func DeleteEntityType(txn *badger.Txn, name string, dec SchemaDecoder) (err erro
 
 // GetEntityType returns the entity schema at the given version
 func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) (out EntityType, err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
 	var scm Schema
 	stopper := func(s Schema) bool {
 		if entS, ok := s.Entities[name]; ok {
@@ -151,9 +134,6 @@ func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) 
 
 // CreateEntityEventType creates a new event type for the entity with the given data schema
 func CreateEntityEventType(txn *badger.Txn, entName, evtName string, schema DataSchema) (err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
 	var evt item.Event
 	if evt, err = newEventTypeCreated(entName, evtName, schema); err != nil {
 		return
@@ -164,10 +144,6 @@ func CreateEntityEventType(txn *badger.Txn, entName, evtName string, schema Data
 
 // UpdateEventType updates the event type with a new data schema
 func UpdateEventType(txn *badger.Txn, entName, evtName string, schema DataSchema) (vsn uint64, err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
-
 	// add event
 	var evt item.Event
 	if evt, err = newEventTypeUpdated(entName, evtName, schema); err != nil {
@@ -203,9 +179,6 @@ func UpdateEventType(txn *badger.Txn, entName, evtName string, schema DataSchema
 
 // DeleteEventType removes the event from the entity schema
 func DeleteEventType(txn *badger.Txn, entName, evtName string) (err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
 	var evt item.Event
 	if evt, err = newEventTypeDeleted(entName, evtName); err != nil {
 		return
@@ -216,9 +189,6 @@ func DeleteEventType(txn *badger.Txn, entName, evtName string) (err error) {
 
 // GetEventType returns the event schema at the given version
 func GetEventType(txn *badger.Txn, dec SchemaDecoder, entName, evtName string, vsn uint64) (out DataSchema, err error) {
-	if err = EnsureSchema(txn); err != nil {
-		return
-	}
 	var scm Schema
 	evtKey := EventSchemaID{Name: evtName, VSN: vsn}
 	stopper := func(s Schema) bool {

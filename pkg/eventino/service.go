@@ -30,6 +30,10 @@ type Eventino interface {
 }
 
 func NewEventino(db *badger.DB, factory schema.SchemaFactory) Eventino {
+	// init schema if necessary
+	_ = db.Update(func(txn *badger.Txn) error {
+		return schema.EnsureSchema(txn)
+	})
 	return &eventino{db: db, factory: factory}
 }
 
