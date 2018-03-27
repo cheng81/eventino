@@ -255,6 +255,12 @@ func decodeNative(descrMap map[string]interface{}) (dec schema.DataSchema, err e
 			dec = boolSchema
 		case "STRING":
 			dec = stringSchema
+		case "LONG":
+			dec = longSchema
+		case "DOUBLE":
+			dec = doublueSchema
+		case "BYTES":
+			dec = bytesSchema
 		default:
 			err = errors.New("NOT IMPLEMENTED")
 		}

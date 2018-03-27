@@ -110,7 +110,7 @@ func init() {
 	nilSchema = newBasicSchema(schema.Null, `{"type":"null"}`)
 	boolSchema = newBasicSchema(schema.Bool, `{"type":"boolean"}`)
 	stringSchema = newBasicSchema(schema.String, `{"type":"string"}`)
-	longSchema = newBasicSchema(schema.String, `{"type":"long"}`)
-	doublueSchema = newBasicSchema(schema.String, `{"type":"double"}`)
-	bytesSchema = newBasicSchema(schema.String, `{"type":"bytes"}`)
+	longSchema = newBasicSchema(schema.Int64, `{"type":"long"}`)
+	doublueSchema = newBasicSchema(schema.Float64, `{"type":"double"}`)
+	bytesSchema = newBasicSchema(schema.Bytes, `{"type":"bytes"}`)
 }

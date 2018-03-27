@@ -1,6 +1,8 @@
 package schemaavro
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/linkedin/goavro"
@@ -139,81 +141,62 @@ func TestAllSchema(t *testing.T) {
 	t.Log("textualEncoded", string(textualEncoded))
 }
 
-func TestBoolSchema(t *testing.T) {
-	if !boolSchema.Valid(true) {
-		t.Fatal("a bool should be a valid value")
-	}
+func TestBasicSchemas(t *testing.T) {
+	t.Run("bool", basicSchemaTester(boolSchema, true))
+	t.Run("string", basicSchemaTester(stringSchema, "foobar"))
+	t.Run("long", basicSchemaTester(longSchema, int64(42)))
+	t.Run("double", basicSchemaTester(doublueSchema, float64(101.666)))
+	t.Run("null", basicSchemaTester(nilSchema, nil))
+	t.Run("bytes", basicSchemaTester(bytesSchema, []byte("foobar")))
+}
 
-	b, err := boolSchema.EncodeSchema()
-	if err != nil {
-		t.Fatal("should not fail on encodeSchema", err)
-	}
-
-	dec := avroSchemaDecoder{}
-	scm, err := dec.Decode(b)
-	if err != nil {
-		t.Fatal("should not fail on decodeSchema", err)
-	}
-
-	if scm != boolSchema {
-		t.Fatal("decoded schema should be boolschema")
-	}
-
-	encoder := boolSchema.Encoder()
-	decoder := boolSchema.Decoder()
-
-	var aBool bool
-	var bIntf interface{}
-
-	aBool = true
-	b, err = encoder.Encode(aBool)
-	if err != nil {
-		t.Fatal("should not fail on encode", err)
-	}
-	bIntf, err = decoder.Decode(b)
-	if err != nil {
-		t.Fatal("should not fail on decode", err)
-	}
-	if aBool != bIntf.(bool) {
-		t.Fatal("a and b bools should match", aBool, bIntf)
+func basicSchemaTester(scm *basicSchema, v interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		testBasicSchema(t, scm, v)
 	}
 }
 
-func TestStringSchema(t *testing.T) {
-	if !stringSchema.Valid("foobar") {
-		t.Fatal("a string should be a valid value")
+func testBasicSchema(t *testing.T, scm *basicSchema, v interface{}) {
+	tName := scm.AvroNative()["type"].(string)
+	if !scm.Valid(v) {
+		t.Fatal(fmt.Sprintf("%s schema - a %s should be a valid value", tName, reflect.TypeOf(v).String()))
 	}
-	b, err := stringSchema.EncodeSchema()
+	b, err := scm.EncodeSchema()
 	if err != nil {
 		t.Fatal("should not fail on encodeSchema", err)
 	}
 
-	dec := avroSchemaDecoder{}
-	scm, err := dec.Decode(b)
+	dec := scm.SchemaDecoder()
+	loadedScm, err := dec.Decode(b)
 	if err != nil {
 		t.Fatal("should not fail on decodeSchema", err)
 	}
 
-	if scm != stringSchema {
+	if scm != loadedScm {
 		t.Fatal("decoded schema should be stringschema")
 	}
 
-	encoder := stringSchema.Encoder()
-	decoder := stringSchema.Decoder()
+	encoder := scm.Encoder()
+	decoder := scm.Decoder()
 
-	var aStr string
-	var bIntf interface{}
+	var v0 interface{}
 
-	aStr = "foobar"
-	b, err = encoder.Encode(aStr)
+	b, err = encoder.Encode(v)
 	if err != nil {
 		t.Fatal("should not fail on encode", err)
 	}
-	bIntf, err = decoder.Decode(b)
+	v0, err = decoder.Decode(b)
 	if err != nil {
 		t.Fatal("should not fail on decode", err)
 	}
-	if aStr != bIntf.(string) {
-		t.Fatal("a and b strs should match", aStr, bIntf)
+
+	if _, ok := v.([]byte); ok {
+		if string(v.([]byte)) != string(v0.([]byte)) {
+			t.Fatal("v and v0 should match", v, v0)
+		}
+	} else {
+		if v != v0 {
+			t.Fatal("v and v0 should match", v, v0)
+		}
 	}
 }
