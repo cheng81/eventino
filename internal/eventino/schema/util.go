@@ -14,12 +14,12 @@ import (
 var schemaID item.ItemID
 
 var EntityTypeNotFound error
-var EntityExists error
+var EntityTypeExists error
 
 func init() {
 	schemaID = item.NewItemID(0, []byte("SCHEMA"))
 	EntityTypeNotFound = errors.New("entity type not found")
-	EntityExists = errors.New("entity already exists")
+	EntityTypeExists = errors.New("entity already exists")
 }
 
 // func EntityIndexID(entityType string) item.ItemID {

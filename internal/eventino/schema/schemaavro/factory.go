@@ -54,6 +54,13 @@ const avroSchemaSchema = `
 }
 `
 
+// additional interface for schema.DataSchema which are avro schemas
+type avroSchema interface {
+	AvroNativeMeta() map[string]interface{}
+	AvroNative() map[string]interface{}
+}
+
+// MetaSchema is the native avro schema to encode avro-like schemas
 var MetaSchema map[string]interface{}
 
 func init() {
@@ -68,13 +75,14 @@ func init() {
 	}
 }
 
+// Factory returns a schema.SchemaFactory
 func Factory() schema.SchemaFactory {
 	return avroSchemaFactory{}
 }
 
 type avroSchemaFactory struct{}
 
-func (_ avroSchemaFactory) SimpleType(t schema.DataType) schema.DataSchema {
+func (avroSchemaFactory) SimpleType(t schema.DataType) schema.DataSchema {
 	switch t {
 	case schema.Null:
 		return nilSchema
@@ -312,9 +320,4 @@ func decodeRecord(d map[string]interface{}) schema.DataSchema {
 	}
 
 	return (&avroRecordSchemaBuilder{Name: d["name"].(string), Fields: fields}).ToDataSchema()
-}
-
-type avroSchema interface {
-	AvroNativeMeta() map[string]interface{}
-	AvroNative() map[string]interface{}
 }

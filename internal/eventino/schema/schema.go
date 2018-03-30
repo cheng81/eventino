@@ -39,7 +39,7 @@ func SchemaVSN(txn *badger.Txn, dec SchemaDecoder) (vsn uint64, err error) {
 // CreateEntityType initializes a new entity type
 func CreateEntityType(txn *badger.Txn, dec SchemaDecoder, name string) (err error) {
 	if _, err = GetEntityType(txn, dec, name, 0); err != EntityTypeNotFound {
-		return EntityExists
+		return EntityTypeExists
 	}
 
 	var evt item.Event
@@ -134,7 +134,10 @@ func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) 
 
 // CreateEntityEventType creates a new event type for the entity with the given data schema
 func CreateEntityEventType(txn *badger.Txn, entName, evtName string, schema DataSchema) (err error) {
-	// TODO: check if entity name exists!
+	if _, err = GetEntityType(txn, schema.SchemaDecoder(), entName, 0); err != nil {
+		return EntityTypeNotFound
+	}
+
 	var evt item.Event
 	if evt, err = newEventTypeCreated(entName, evtName, schema); err != nil {
 		return
@@ -145,6 +148,10 @@ func CreateEntityEventType(txn *badger.Txn, entName, evtName string, schema Data
 
 // UpdateEventType updates the event type with a new data schema
 func UpdateEventType(txn *badger.Txn, entName, evtName string, schema DataSchema) (vsn uint64, err error) {
+	if _, err = GetEntityType(txn, schema.SchemaDecoder(), entName, 0); err != nil {
+		return 0, EntityTypeNotFound
+	}
+
 	// add event
 	var evt item.Event
 	if evt, err = newEventTypeUpdated(entName, evtName, schema); err != nil {
@@ -179,7 +186,11 @@ func UpdateEventType(txn *badger.Txn, entName, evtName string, schema DataSchema
 }
 
 // DeleteEventType removes the event from the entity schema
-func DeleteEventType(txn *badger.Txn, entName, evtName string) (err error) {
+func DeleteEventType(txn *badger.Txn, dec SchemaDecoder, entName, evtName string) (err error) {
+	if _, err = GetEntityType(txn, dec, entName, 0); err != nil {
+		return EntityTypeNotFound
+	}
+
 	var evt item.Event
 	if evt, err = newEventTypeDeleted(entName, evtName); err != nil {
 		return
