@@ -71,6 +71,11 @@ func TestCreate(t *testing.T) {
 			if _, err = Put(txn, entTyp, entID, schema.NewEventSchemaID("Created", 0), createdRec); err != nil {
 				return
 			}
+
+			tags := []string{"awesome", "slice", "of", "tags"}
+			if _, err = Put(txn, entTyp, entID, schema.NewEventSchemaID("Tags", 0), tags); err != nil {
+				return
+			}
 			return
 		})
 		if err != nil {
@@ -111,6 +116,21 @@ func TestCreate(t *testing.T) {
 			}
 			if rec["Paying"] != true {
 				t.Fatal("1st event payload Paying=true", rec)
+			}
+
+			evt = ent.Events[1]
+			if evt.Type.Name != "Tags" {
+				t.Fatal("2nd event should be Tags")
+			}
+			arr, ok := evt.Payload.([]interface{})
+			if !ok {
+				t.Fatal("2nd event payload should be array", evt.Payload)
+			}
+			tags := []string{"awesome", "slice", "of", "tags"}
+			for i, tag := range tags {
+				if arr[i] != tag {
+					t.Fatal("tags should be ordered equally", i, tag, arr[i])
+				}
 			}
 			return
 		})
@@ -249,6 +269,11 @@ func mkSchema(db *badger.DB) error {
 			SetField("Username", stringSchema).
 			SetField("Useful", nullSchema)
 		if err = schema.CreateEntityEventType(txn, "User", "Updated", updatedBldr.ToDataSchema()); err != nil {
+			return
+		}
+
+		arr := factory.NewArray(stringSchema)
+		if err = schema.CreateEntityEventType(txn, "User", "Tags", arr); err != nil {
 			return
 		}
 

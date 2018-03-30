@@ -134,6 +134,7 @@ func GetEntityType(txn *badger.Txn, dec SchemaDecoder, name string, vsn uint64) 
 
 // CreateEntityEventType creates a new event type for the entity with the given data schema
 func CreateEntityEventType(txn *badger.Txn, entName, evtName string, schema DataSchema) (err error) {
+	// TODO: check if entity name exists!
 	var evt item.Event
 	if evt, err = newEventTypeCreated(entName, evtName, schema); err != nil {
 		return

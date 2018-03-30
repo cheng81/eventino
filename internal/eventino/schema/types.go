@@ -86,7 +86,7 @@ type SchemaFactory interface {
 	// TODO suport other complex types
 	// NewEnum(items ...string) DataSchema
 	// NewOptional(DataSchema) DataSchema
-	// NewArray(DataSchema) DataSchema
+	NewArray(DataSchema) DataSchema
 	// NewUnion(types ...DataSchema) DataSchema
 }
 

@@ -93,11 +93,15 @@ func (_ avroSchemaFactory) SimpleType(t schema.DataType) schema.DataSchema {
 
 }
 
-func (_ avroSchemaFactory) NewRecord() schema.RecordSchemaBuilder {
+func (avroSchemaFactory) NewRecord() schema.RecordSchemaBuilder {
 	return &avroRecordSchemaBuilder{Fields: map[string]schema.DataSchema{}}
 }
 
-func (_ avroSchemaFactory) Decoder() schema.SchemaDecoder {
+func (avroSchemaFactory) NewArray(items schema.DataSchema) schema.DataSchema {
+	return newArray(items)
+}
+
+func (avroSchemaFactory) Decoder() schema.SchemaDecoder {
 	return avroSchemaDecoder{}
 }
 
@@ -126,7 +130,7 @@ func (a byNameMap) Less(i, j int) bool {
 	return strings.Compare(x, y) > 0
 }
 
-func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
+func (avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
 	entsEvt := []map[string]interface{}{}
 	entsLoad := []map[string]interface{}{}
 	for name, typ := range s.Entities {
@@ -230,7 +234,7 @@ func (_ avroSchemaFactory) EncodeNetwork(s *schema.Schema) []byte {
 
 type avroSchemaDecoder struct{}
 
-func (_ avroSchemaDecoder) Decode(b []byte) (dec schema.DataSchema, err error) {
+func (avroSchemaDecoder) Decode(b []byte) (dec schema.DataSchema, err error) {
 	var descr interface{}
 	if descr, _, err = avroSchemaCodec.NativeFromBinary(b); err != nil {
 		return nil, err
@@ -240,7 +244,7 @@ func (_ avroSchemaDecoder) Decode(b []byte) (dec schema.DataSchema, err error) {
 	return
 }
 
-func (_ avroSchemaDecoder) DecodeNative(descrMap interface{}) (dec schema.DataSchema, err error) {
+func (avroSchemaDecoder) DecodeNative(descrMap interface{}) (dec schema.DataSchema, err error) {
 	dec, err = decodeNative(descrMap.(map[string]interface{}))
 	return
 }
@@ -278,6 +282,12 @@ func decodeNative(descrMap map[string]interface{}) (dec schema.DataSchema, err e
 		switch t {
 		case "RECORD":
 			dec = decodeRecord(val.(map[string]interface{}))
+		case "ARRAY":
+			itemsJScm := val.(map[string]interface{})["items"].(map[string]interface{})
+			itemsDec, err := decodeNative(itemsJScm)
+			if err == nil {
+				dec = newArray(itemsDec)
+			}
 		default:
 			err = errors.New("NOT IMPLEMENTED")
 		}
