@@ -86,16 +86,16 @@ func NewAliasDeleteEvent(aliasID ItemID) Event {
 
 // Encode encodes the ItemID into a []byte
 func (id ItemID) Encode() []byte {
-	var out = make([]byte, 2+len(id.ID))
+	var out = make([]byte, 1+len(id.ID))
 	id.encodeInto(out)
 	return out
 }
 func (id ItemID) encodeInto(b []byte) {
-	binary.BigEndian.PutUint16(b, uint16(id.Type))
-	copy(b[2:], id.ID)
+	b[0] = id.Type
+	copy(b[1:], id.ID)
 }
 func (id ItemID) BaseKey() []byte {
-	var out = make([]byte, 3+len(id.ID))
+	var out = make([]byte, 2+len(id.ID))
 	out[0] = eventino.PfxItem
 	id.encodeInto(out[1:])
 	return out
@@ -105,13 +105,13 @@ func (id ItemID) baseKeyInto(b []byte) {
 	id.encodeInto(b[1:])
 }
 func (id ItemID) keyOf(b byte) []byte {
-	l := len(id.ID) + 4
+	l := len(id.ID) + 3
 	out := make([]byte, l)
 	id.keyOfInto(b, out)
 	return out
 }
 func (id ItemID) keyOfInto(b byte, bs []byte) {
-	l := len(id.ID) + 4
+	l := len(id.ID) + 3
 	id.baseKeyInto(bs)
 	bs[l-1] = b
 }
@@ -125,43 +125,43 @@ func (id ItemID) KeyEventsBase() []byte {
 	return id.keyOf(itemKeyEvents)
 }
 func (id ItemID) KeyEventVsn(vsn uint64) []byte {
-	out := make([]byte, 12+len(id.ID))
+	out := make([]byte, 11+len(id.ID))
 	id.keyOfInto(itemKeyEvents, out)
-	binary.BigEndian.PutUint64(out[4+len(id.ID):], vsn)
+	binary.BigEndian.PutUint64(out[3+len(id.ID):], vsn)
 	return out
 }
 func (id ItemID) KeyViews() []byte {
 	return id.keyOf(itemKeyView)
 }
 func (id ItemID) KeyView(name []byte) []byte {
-	out := make([]byte, len(id.ID)+len(name)+4)
-	id.keyOfInto(itemKeyView, out[0:len(id.ID)+4])
-	copy(out[len(id.ID)+4:], name)
+	out := make([]byte, len(id.ID)+len(name)+3)
+	id.keyOfInto(itemKeyView, out[0:len(id.ID)+3])
+	copy(out[len(id.ID)+3:], name)
 	return out
 }
 func (id ItemID) AliasKey() []byte {
-	var out = make([]byte, 3+len(id.ID))
+	var out = make([]byte, 2+len(id.ID))
 	out[0] = eventino.PfxAlias
 	id.encodeInto(out[1:])
 	return out
 }
 func (id ItemID) VSNFromEventKey(k []byte) (uint64, error) {
-	if len(k) != 12+len(id.ID) ||
+	if len(k) != 11+len(id.ID) ||
 		k[0] != eventino.PfxItem ||
-		k[len(id.ID)+3] != itemKeyEvents {
+		k[len(id.ID)+2] != itemKeyEvents {
 		return 0, KeyError
 	}
-	return binary.BigEndian.Uint64(k[4+len(id.ID):]), nil
+	return binary.BigEndian.Uint64(k[3+len(id.ID):]), nil
 }
 
 // DecodeItemID parse the []byte into an ItemID.
-// Returns NoItemIDError if the len([]byte) < 2
+// Returns NoItemIDError if the len([]byte) < 1
 func DecodeItemID(b []byte) (out ItemID, err error) {
-	if len(b) < 2 {
+	if len(b) < 1 {
 		return out, NoItemIDError
 	}
-	out.Type = uint8(binary.BigEndian.Uint16(b[0:2]))
-	out.ID = b[2:]
+	out.Type = uint8(b[0])
+	out.ID = b[1:]
 	return
 }
 
@@ -172,8 +172,8 @@ func AliasFromEvent(evt Event) (ItemID, error) {
 		return ItemID{}, NotAliasEvent
 	}
 	out := ItemID{
-		Type: uint8(binary.BigEndian.Uint16(evt.Payload[0:2])),
-		ID:   evt.Payload[2:],
+		Type: uint8(evt.Payload[0]),
+		ID:   evt.Payload[1:],
 	}
 	return out, nil
 }
