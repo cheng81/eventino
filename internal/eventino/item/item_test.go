@@ -2,12 +2,12 @@ package item
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/cheng81/eventino/internal/eventino/log"
 	"github.com/dgraph-io/badger"
 )
 
@@ -24,13 +24,13 @@ func DirSize(path string) (int64, error) {
 
 func withTempDB(fn func(*badger.DB) error) error {
 	dbDir := fmt.Sprintf("/tmp/badger-%d", time.Now().UnixNano())
-	log.Println("start")
+	fmt.Println("start")
 	opts := badger.DefaultOptions
 	opts.Dir = dbDir
 	opts.ValueDir = dbDir
 	db, err := badger.Open(opts)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 	if err = fn(db); err != nil {
@@ -392,3 +392,79 @@ func TestPersistentView(t *testing.T) {
 
 // TODO: test alias delete
 // TODO: test replicate
+
+func TestRangePrefix(t *testing.T) {
+	tStart := time.Now().UnixNano()
+
+	id1 := NewItemID(0, []byte("foo-foo1"))
+	id2 := NewItemID(0, []byte("bar-bar1"))
+	id3 := NewItemID(0, []byte("foo-foo2"))
+
+	mkEvt := func(id ItemID) [][]string {
+		return [][]string{
+			[]string{"evt.0", fmt.Sprintf("%s-evt.0", string(id.ID))},
+			[]string{"evt.1", fmt.Sprintf("%s-evt.1", string(id.ID))},
+			[]string{"evt.2", fmt.Sprintf("%s-evt.2", string(id.ID))},
+			[]string{"evt.3", fmt.Sprintf("%s-evt.3", string(id.ID))},
+		}
+	}
+
+	withTempDB(func(db *badger.DB) (err error) {
+		err = db.Update(func(txn *badger.Txn) (err error) {
+			if err = createItem(txn, id1, mkEvt(id1)); err != nil {
+				return
+			}
+			if err = createItem(txn, id2, mkEvt(id2)); err != nil {
+				return
+			}
+			if err = createItem(txn, id3, mkEvt(id3)); err != nil {
+				return
+			}
+			return
+		})
+		if err != nil {
+			t.Fatal("cannot write", err)
+		}
+
+		err = db.View(func(txn *badger.Txn) (err error) {
+			evts, nextID, err := RangePrefix(txn, NewItemID(0, []byte("foo-")), log.NewEventID(0, uint64(tStart), 0), log.NewEventIDNow(0), 100)
+			if err != nil {
+				return
+			}
+			if nextID != nil {
+				t.Fatal("should have loaded all events", nextID)
+			}
+			if len(evts) != 10 { // 2 create and 8 custom
+				t.Fatal("loaded events should be 10", len(evts))
+			}
+			for _, evt := range evts {
+				if string(evt.ID.ID) != "foo-foo1" && string(evt.ID.ID) != "foo-foo2" {
+					t.Fatal("loaded event id should be foo1 or foo2", string(evt.ID.ID))
+				}
+				if !IsCreatedEvent(evt.Event) {
+					if string(evt.Event.Type) != "evt.0" && string(evt.Event.Type) != "evt.1" && string(evt.Event.Type) != "evt.2" && string(evt.Event.Type) != "evt.3" {
+						t.Fatal("loaded event type should be created or evt.[0..3]", string(evt.Event.Type))
+					}
+				}
+			}
+			return
+		})
+		if err != nil {
+			t.Fatal("cannot read", err)
+		}
+		return
+	})
+}
+
+func createItem(txn *badger.Txn, id ItemID, events [][]string) (err error) {
+	if err = Create(txn, id); err != nil {
+		return
+	}
+	for _, strs := range events {
+		evt := NewEvent(0, []byte(strs[0]), []byte(strs[1]))
+		if _, err = Put(txn, id, evt); err != nil {
+			return
+		}
+	}
+	return
+}

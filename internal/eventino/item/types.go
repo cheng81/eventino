@@ -100,6 +100,8 @@ func (id ItemID) BaseKey() []byte {
 	id.encodeInto(out[1:])
 	return out
 }
+
+// [PfxItem][id.Type][id.Id][V]
 func (id ItemID) baseKeyInto(b []byte) {
 	b[0] = eventino.PfxItem
 	id.encodeInto(b[1:])
@@ -116,7 +118,13 @@ func (id ItemID) keyOfInto(b byte, bs []byte) {
 	bs[l-1] = b
 }
 func (id ItemID) KeyVSN() []byte {
-	return id.keyOf(itemKeyVSN)
+	l := len(id.ID) + 3
+	out := make([]byte, l)
+	out[0] = eventino.PfxItem
+	out[1] = id.Type
+	out[2] = itemKeyVSN
+	copy(out[3:], id.ID)
+	return out //id.keyOf(itemKeyVSN)
 }
 func (id ItemID) KeyAliases() []byte {
 	return id.keyOf(itemKeyAliases)

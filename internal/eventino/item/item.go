@@ -352,35 +352,28 @@ func View(txn *badger.Txn, ID ItemID, fromVsn uint64, fold ViewFoldFunc, initial
 
 // RangePrefix loads from the log a chunk of item events, matching a given item prefix
 func RangePrefix(txn *badger.Txn, itemPfx ItemID, from, to log.EventID, max int) ([]IDEvent, *log.EventID, error) {
-	matcher := log.EventMatcher(func(lEvtId log.EventID, lEvt log.Event) bool {
+	// make a filter & map function
+	folder := log.EventFolder(func(acc interface{}, lEvtID log.EventID, lEvt log.Event) (interface{}, error) {
 		evt, err := unwrapLogEventWire(lEvt)
 		if err != nil {
-			return false
+			return nil, err
 		}
 		id := evt.ID
-		return id.Type == itemPfx.Type && bytes.HasPrefix(id.ID, itemPfx.ID)
+		if id.Type == itemPfx.Type && bytes.HasPrefix(id.ID, itemPfx.ID) {
+			elm := IDEvent{
+				ID:    evt.ID,
+				Event: Event{LogID: lEvt.ID, Kind: lEvt.Meta, Type: evt.EventType, Payload: evt.Payload},
+			}
+			return append(acc.([]IDEvent), elm), nil
+		}
+		return acc, nil
 	})
-	events, lastEvtID, err := log.RangeMatch(txn, from, to, max, matcher)
+
+	acc, lastEvtID, err := log.Fold(txn, from, to, max, folder, []IDEvent{})
 	if err != nil {
 		return nil, nil, err
 	}
-	out := make([]IDEvent, len(events))
-	for idx, lEvt := range events {
-		evt, err := unwrapLogEventWire(lEvt)
-		if err != nil {
-			return nil, nil, err
-		}
-		out[idx] = IDEvent{
-			ID: evt.ID,
-			Event: Event{
-				LogID:   lEvt.ID,
-				Kind:    lEvt.Meta,
-				Type:    evt.EventType,
-				Payload: evt.Payload,
-			},
-		}
-	}
-	return out, lastEvtID, nil
+	return acc.([]IDEvent), lastEvtID, err
 }
 
 // Replicate applies the changes specified in the log.EventReplica
