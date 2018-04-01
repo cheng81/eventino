@@ -26,6 +26,9 @@ type Event struct {
 // EventMatcher implements event filtering
 type EventMatcher func(EventID, Event) bool
 
+// EventFolder implements event folding facility
+type EventFolder func(interface{}, EventID, Event) (interface{}, error)
+
 // Encode returns the []byte representation to be used as badger key
 func (eid EventID) Encode() (out []byte) {
 	out = make([]byte, 13)

@@ -90,29 +90,31 @@ func Range(txn *badger.Txn, from EventID, to EventID, max int) ([]Event, *EventI
 	return out, nextEventID, err
 }
 
-// RangeMatch retrieve a chunk of events from the log satisfying the given matcher
-func RangeMatch(txn *badger.Txn, from EventID, to EventID, max int, m EventMatcher) ([]Event, *EventID, error) {
-	out := make([]Event, max)
+// Fold applies a function to a chunk of events, returning the latest output, and a next EventID in case
+// a maximum amount of events is read
+func Fold(txn *badger.Txn, from EventID, to EventID, max int, f EventFolder, init interface{}) (interface{}, *EventID, error) {
 	var nextEventID *EventID
 	var err error
 
+	var out interface{} = init
+	var ctr int
+
 	pfx := from.Encode()
 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
-	added := 0
 	defer iter.Close()
+
 	for iter.Seek(pfx); iter.ValidForPrefix([]byte{eventino.PfxLog}); iter.Next() {
 		item := iter.Item()
 		eid := EventID{}
-		err = DecodeEventID(item.Key(), &eid)
-		if err != nil {
+		if err = DecodeEventID(item.Key(), &eid); err != nil {
 			return nil, nil, err
 		}
 		// can't go past to
 		if eid.Timestamp > to.Timestamp || (eid.Timestamp == to.Timestamp && eid.Index > to.Index) {
 			break
 		}
-		// got enough events
-		if added == max {
+		// folded enough events
+		if ctr >= max {
 			nextEventID = &eid
 			break
 		}
@@ -122,12 +124,28 @@ func RangeMatch(txn *badger.Txn, from EventID, to EventID, max int, m EventMatch
 			return nil, nil, err
 		}
 
-		add := m(eid, evt)
-		if add {
-			out[added] = evt
-			added++
+		if out, err = f(out, eid, evt); err != nil {
+			return nil, nil, err
 		}
+
+		ctr++
 	}
 
-	return out[0:added], nextEventID, err
+	return out, nextEventID, err
+}
+
+// RangeMatch retrieve a chunk of events from the log satisfying the given matcher
+func RangeMatch(txn *badger.Txn, from EventID, to EventID, max int, m EventMatcher) ([]Event, *EventID, error) {
+	f := EventFolder(func(acc interface{}, eid EventID, evt Event) (interface{}, error) {
+		if m(eid, evt) {
+			return append(acc.([]Event), evt), nil
+		}
+		return acc, nil
+	})
+
+	acc, nextEventID, err := Fold(txn, from, to, max, f, make([]Event, 0, max))
+	if err != nil {
+		return nil, nil, err
+	}
+	return acc.([]Event), nextEventID, err
 }
